@@ -243,9 +243,16 @@ def definir_leadtime(conjuntos):
 
     # Iterar sobre cada linha do DataFrame
     for _, row in itens.iterrows():
-        if row['lead time montagem'] != '0' and row['lead time montagem'] != '' and row['lead time montagem'] != '?' and row['lead time montagem'] != '#VALUE!' and (row['etapa_x'] == 'montagem' and row['etapa_y'] == 'montagem'):
+        if row['lead time montagem'] != '0' and row['lead time montagem'] != '' and row['lead time montagem'] != '?' and row['lead time montagem'] != '#VALUE!' and row['lead time montagem'] != '#N/A' and (row['etapa_x'] == 'montagem' and row['etapa_y'] == 'montagem'):
             linha = {coluna: row[coluna] for coluna in itens.columns}
             linha['ETAPA'] = 'MONTAGEM'
+            novas_linhas.append(linha)
+
+        elif row['lead time montagem'] != '0' and row['lead time montagem'] != '' and row['lead time montagem'] != '?' and row['lead time montagem'] != '#VALUE!' and row['lead time montagem'] != '#N/A' and (row['etapa_x'] != 'montagem' and row['etapa_y'] != 'montagem'):
+            linha = {coluna: row[coluna] for coluna in itens.columns}
+            linha['ETAPA'] = 'MONTAGEM'
+            linha['data_inicio'] = None
+            linha['data_fim_tratada'] = None
             novas_linhas.append(linha)
 
         # MANTER PARA QUANDO FOR ESTABELECER OS TEMPOS DE SOLDA
@@ -253,15 +260,33 @@ def definir_leadtime(conjuntos):
         #     # colunas_excluidas = ['data_inicio','data_fim_tratada']
         #     linha = {coluna: row[coluna] for coluna in itens.columns}
         #     linha['ETAPA'] = 'SOLDA'
-        #     linha['qt_planejada'] = ''
-        #     linha['qt_apontada'] = ''
-        #     linha['data_inicio'] = ''
-        #     linha['data_fim_tratada'] = ''
+        #     linha['qt_planejada'] = None
+        #     linha['qt_apontada'] = None
+        #     linha['data_inicio'] = None
+        #     linha['data_fim_tratada'] = None
         #     novas_linhas.append(linha)
 
-        if row['lead time pintura'] != '0' and row['lead time pintura'] != '' and row['lead time pintura'] != '?' and row['lead time pintura'] != '#VALUE!' and (row['etapa_x'] == 'pintura' and row['etapa_y'] == 'pintura'):
+        # MANTER PARA QUANDO FOR ESTABELECER OS TEMPOS DE MONTAGEM DE MADEIRA
+        # if row['lead time montar madeira'] != '0' and row['lead time montar madeira'] != '' and row['lead time montar madeira'] != '?' and row['lead time montar madeira'] != '#VALUE!':
+        #     # colunas_excluidas = ['data_inicio','data_fim_tratada']
+        #     linha = {coluna: row[coluna] for coluna in itens.columns}
+        #     linha['ETAPA'] = 'MONTAR MADEIRA'
+        #     linha['qt_planejada'] = None
+        #     linha['qt_apontada'] = None
+        #     linha['data_inicio'] = None
+        #     linha['data_fim_tratada'] = None
+        #     novas_linhas.append(linha)
+
+        if row['lead time pintura'] != '0' and row['lead time pintura'] != '' and row['lead time pintura'] != '?' and row['lead time pintura'] != '#VALUE!' and row['lead time pintura'] != '#N/A' and (row['etapa_x'] == 'pintura' and row['etapa_y'] == 'pintura'):
             linha = {coluna: row[coluna] for coluna in itens.columns}
             linha['ETAPA'] = 'PINTURA'
+            novas_linhas.append(linha)
+        # Não está apontada na planilha
+        elif row['lead time pintura'] != '0' and row['lead time pintura'] != '' and row['lead time pintura'] != '?' and row['lead time pintura'] != '#VALUE!' and row['lead time pintura'] != '#N/A' and (row['etapa_x'] != 'pintura' and row['etapa_y'] != 'pintura'):
+            linha = {coluna: row[coluna] for coluna in itens.columns}
+            linha['ETAPA'] = 'PINTURA'
+            linha['data_inicio'] = None
+            linha['data_fim_tratada'] = None
             novas_linhas.append(linha)
 
     df_transformado = pd.DataFrame(novas_linhas)
@@ -274,8 +299,8 @@ def definir_leadtime(conjuntos):
 
     condicoes_status = [
         (df_transformado['data_inicio'].isna()) & (df_transformado['ETAPA'] != 'SOLDA'),
-        (df_transformado['qt_planejada'] > df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] != 'SOLDA'),
-        (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] != 'SOLDA') & (df_transformado['qt_planejada'] > 0)
+        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] > df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] != 'SOLDA'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] != 'SOLDA') & (df_transformado['qt_planejada'] > 0)
     ]
 
     valores_status = [
@@ -284,16 +309,36 @@ def definir_leadtime(conjuntos):
         'Finalizada'
     ]
 
+    
+    valor_lead_time_pintura = pd.to_timedelta(pd.to_numeric(df_transformado['pintura']),unit='D')
+    valor_lead_time_montagem = pd.to_timedelta(pd.to_numeric(df_transformado['montagem']),unit='D')
+    valor_lead_time_solda = pd.to_timedelta(pd.to_numeric(df_transformado['solda']),unit='D')
+    # valor_lead_time_montagem_madeira = pd.to_timedelta(pd.to_numeric(df_transformado['mm']),unit='D')
+
+    valor_data_entrega_pintura = (df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1))
+    valor_data_entrega_montagem = ((df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1)) - valor_lead_time_pintura - valor_lead_time_solda)
+
     condicoes_data_entrega = [
         (df_transformado['ETAPA'] == 'PINTURA'),
         (df_transformado['ETAPA'] == 'MONTAGEM')
     ]
-
     
     valores_data_entrega = [
-        ((df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1)).dt.strftime('%d/%m/%Y')),
-        (((df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1)) - pd.to_timedelta(pd.to_numeric(df_transformado['pintura']),unit='D') - pd.to_timedelta(pd.to_numeric(df_transformado['solda']),unit='D')).dt.strftime('%d/%m/%Y'))
+        (valor_data_entrega_pintura.dt.strftime('%d/%m/%Y')),
+        (valor_data_entrega_montagem.dt.strftime('%d/%m/%Y'))
     ]
+
+    # DEFININDO POSSIBILIDADES PARA OS VALORES
+    condicoes_opcional_6 = [
+        (df_transformado['ETAPA'] == 'PINTURA'),
+        (df_transformado['ETAPA'] == 'MONTAGEM')
+    ]
+    
+    valores_opcional_6 = [
+        ((valor_data_entrega_pintura - valor_lead_time_pintura).dt.strftime('%d/%m/%Y')),
+        ((valor_data_entrega_montagem - valor_lead_time_montagem).dt.strftime('%d/%m/%Y'))
+    ]
+
 
     # Garantir que a coluna esteja em formato datetime
     df_transformado['PED_PREVISAOEMISSAODOC'] = pd.to_datetime(df_transformado['PED_PREVISAOEMISSAODOC'], errors='coerce')
@@ -323,7 +368,7 @@ def definir_leadtime(conjuntos):
     df_transformado['Grupo'] = df_transformado['subgrupo']
     df_transformado['SubGrupo'] = df_transformado['subgrupo']
     df_transformado['Status'] = np.select(condicoes_status,valores_status,default='')
-    df_transformado['Data de Emissão'] = df_transformado['PED_PREVISAOEMISSAODOC'].dt.strftime('%d/%m/%Y')
+    df_transformado['Data de Emissão'] = ''
     df_transformado['Data de Liberação'] = df_transformado['data_inicio'].dt.strftime('%d/%m/%Y')
     df_transformado['Data de Entrega'] = np.select(condicoes_data_entrega,valores_data_entrega,default='')
     df_transformado['Data de Encerramento'] = np.where(
@@ -333,16 +378,16 @@ def definir_leadtime(conjuntos):
     )
     df_transformado['Valor Unitário'] = ''
     df_transformado['OPCIONAL 1'] = (df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1)).dt.strftime('%d/%m/%Y')
-    df_transformado['OPCIONAL 2'] = df_transformado['Data de Emissão']
+    df_transformado['OPCIONAL 2'] = df_transformado['PED_PREVISAOEMISSAODOC'].dt.strftime('%d/%m/%Y')
     df_transformado['OPCIONAL 3'] = df_transformado['montagem']
     df_transformado['OPCIONAL 4'] = df_transformado['solda']
     df_transformado['OPCIONAL 5'] = df_transformado['pintura']
-    df_transformado['OPCIONAL 6'] = ''
+    df_transformado['OPCIONAL 6'] = np.select(condicoes_opcional_6,valores_opcional_6,default='')
     df_transformado['OPCIONAL 7'] = df_transformado['carreta']
     df_transformado['COR PRIORIDADE'] = ''
 
 
-    colunas_desejadas = ['Data','Ordem de Produção','Produto','Descrição do Produto','Quantidade','Quantidade_Original','Cliente','Unidade Fabril','Local',
+    colunas_desejadas = ['Data','Ordem de Produção','Produto','Cor','Tamanho','Descrição do Produto','Quantidade','Quantidade_Original','Cliente','Unidade Fabril','Local',
                          'Recurso','Grupo','SubGrupo','Status','Data de Emissão','Data de Liberação','Data de Entrega','Data de Encerramento','Valor Unitário',
                          'OPCIONAL 1','OPCIONAL 2','OPCIONAL 3','OPCIONAL 4','OPCIONAL 5','OPCIONAL 6','OPCIONAL 7','COR PRIORIDADE']
 
