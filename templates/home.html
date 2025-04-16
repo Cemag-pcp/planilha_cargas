@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carga</title>
+
+    <link rel="stylesheet" href="static/css/style.css">
+
+    <!-- Certifique-se de carregar o jQuery primeiro -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+</head>
+<body>
+    <h1>Buscar Cargas</h1>
+    <form action="/processar/" method="post" id="formConsulta">
+        <label for="">Data Início</label>
+        <input type="date" name="data_inicio" required><br><br>
+
+        <label for="">Data Final</label>
+        <input type="date" name="data_final" required>
+
+        <div class="form-footer">
+            <button id="enviarButton" type="submit">Enviar</button>
+        </div><br>
+
+        <div id="returnEmpty">
+
+        </div>
+
+        <a id="csvLink"><button type='button' id='csvButton' style="display: none;">Exportar XLSX</button></a>
+        
+    </form>
+
+    <table id="minhaTabela" border="1">
+        <thead>
+            <tr id="cabecalho-tabela">
+                <!-- Os cabeçalhos serão gerados dinamicamente -->
+            </tr>
+        </thead>
+        <tbody>
+            <!-- As linhas serão geradas dinamicamente -->
+        </tbody>
+    </table>
+    
+    <script src="/static/scripts/script.js"></script>
+</body>
+
+
+</html>
