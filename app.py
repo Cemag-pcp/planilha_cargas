@@ -169,7 +169,7 @@ def atualizacao_diaria(tentativa_extra=False):
         if not tentativa_extra:
             print("Tentando reagendar a tarefa...")
             nova_tarefa = partial(atualizacao_diaria, tentativa_extra=True)
-            schedule.every(5).minutes.do(nova_tarefa_com_cancelamento(nova_tarefa))
+            schedule.every(10).minutes.do(nova_tarefa_com_cancelamento(nova_tarefa))
         return {"status": "erro", "mensagem": str(e)}
 
 def nova_tarefa_com_cancelamento(func):
@@ -202,8 +202,7 @@ def agendar_atualizacao():
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
         print(jobs)
-        print(datetime.now().time())
-        time.sleep(20)
+        time.sleep(300)
 
 # Inicia o agendamento em uma thread separada
 def start_thread():
