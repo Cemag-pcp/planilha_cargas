@@ -1,10 +1,20 @@
-from flask import Flask, render_template, request, Response, send_file
-from conexao_plan import busca_cargas, conectar_com_base, definir_leadtime
+# 1. Imports padrão do Python
+import os
+import time
 import json
 import uuid
-import os
 import glob
-import time
+from datetime import date, timedelta, datetime
+
+# 2. Bibliotecas externas
+from flask import Flask, render_template, request, Response, send_file
+import schedule
+import threading
+from functools import partial
+
+# 3. Imports locais
+from conexao_plan import busca_cargas, conectar_com_base, definir_leadtime
+
 
 # Criando a instância da aplicação Flask
 app = Flask(__name__)
@@ -20,6 +30,9 @@ def processar():
     
     data_inicio = request.form.get('data_inicio')
     data_final = request.form.get('data_final')
+
+    print(data_inicio)
+    print(data_final)
     
     cargas = busca_cargas(data_inicio, data_final)
     conjuntos_filtrados = conectar_com_base(cargas)
@@ -33,12 +46,61 @@ def processar():
     os.makedirs('tmp', exist_ok=True)
     caminho = os.path.join("tmp", nome_arquivo)  # pasta "tmp" deve existir
 
+
     # Salva o DataFrame como Excel em disco
     planilha_final.to_excel(caminho, index=False)
 
+    # Agrupando o df para gerar o gráfico
+
+    # agrupado = planilha_final[['Recurso','Status','COR PRIORIDADE']].groupby(['Recurso', 'Status','COR PRIORIDADE']).size().reset_index(name='ocorrencias')
+
+     # Gerar gráficos
+
+    # Pegar todos os recursos únicos pro eixo X
+    # recursos = planilha_final['Recurso'].unique().tolist()
+    # print(recursos)
+
+    # # Agrupar por Status + Cor
+    # # agrupado = planilha_final.groupby(['Status', 'COR PRIORIDADE'])
+
+    # agrupado = planilha_final.groupby(['Recurso', 'Status', 'COR PRIORIDADE']).size().reset_index(name='ocorrencias')
+    # print(agrupado)
+
+    # datasets = []
+
+    # for (status, cor), grupo in agrupado.groupby(['Status', 'COR PRIORIDADE']):
+    #     data = []
+    #     print(grupo)
+    #     for recurso in recursos:
+    #         ocorrencias = grupo.loc[grupo['Recurso'] == recurso, 'ocorrencias']
+    #         data.append(ocorrencias.iloc[0] if not ocorrencias.empty else 0)
+
+    #     datasets.append({
+    #         'label': f'{status}',
+    #         'backgroundColor': cor.split('.')[-1].lower(),  # ex: 'AZUL'
+    #         'data': data,
+    #         'stack': 'stack1'
+    #     })
+
+    # print(datasets)
+
+    # grafico_id = f"grafico_{uuid.uuid4().hex}.json"
+    # caminho_grafico = os.path.join('tmp', grafico_id)
+    # print(caminho_grafico)
+
+    # # with open(caminho_grafico, 'w', encoding='utf-8') as f:
+    # #     json.dump({'labels': recursos, 'datasets': datasets}, f, ensure_ascii=False)
+    # with open(caminho_grafico, 'w', encoding='utf-8') as f:
+    #     json.dump({'labels': recursos, 'datasets': datasets}, f, ensure_ascii=False, default=int)
+
+
+
+
     # Prepara JSON de resposta
     plan_json = planilha_final.to_dict(orient='records')
-    json_data = json.dumps({'dados': plan_json, 'arquivo': nome_arquivo}, ensure_ascii=False, indent=4)
+    json_data = json.dumps({'dados': plan_json, 
+                            'arquivo': nome_arquivo,
+                            }, ensure_ascii=False, indent=4)
 
     return Response(json_data, content_type='application/json', status=200)
 
@@ -56,6 +118,66 @@ def exportar_excel(nome_arquivo):
         download_name='cargas_exportadas.xlsx'
     )
 
+def atualizacao_diaria(tentativa_extra=False):
+    try:
+        print("Executando a atualização diária")
+        
+        data_atual = date.today()
+        data_atual_arquivo = data_atual
+        caminho_arquivo = os.path.join("atualizacao-diaria", f"cargas_{data_atual_arquivo}.xlsx")  # pasta "tmp" deve existir
+
+        if os.path.exists(caminho_arquivo):
+            print('Arquivo do dia já existe!')
+            return "Arquivo já existe"
+
+        if data_atual.day > 15:
+            data_inicio = date(data_atual.year,data_atual.month,16)
+        else:
+            data_inicio = date(data_atual.year,data_atual.month,1)
+
+        data_final = data_inicio + timedelta(days=15)
+
+        
+        print(data_inicio)
+        print(data_final)
+        
+        cargas = busca_cargas(data_inicio, data_final)
+        conjuntos_filtrados = conectar_com_base(cargas)
+        planilha_final = definir_leadtime(conjuntos_filtrados)
+
+        if planilha_final.empty:
+            return {"status": "vazio"}
+
+        # Gera nome único para o arquivo
+        nome_arquivo = f"cargas_{data_atual_arquivo}.xlsx"
+        os.makedirs('atualizacao-diaria', exist_ok=True)
+        caminho = os.path.join("atualizacao-diaria", nome_arquivo)  # pasta "tmp" deve existir
+        print(caminho)
+
+        # Salva o DataFrame como Excel em disco
+        planilha_final.to_excel(caminho, index=False)
+
+        # Prepara JSON de resposta
+        plan_json = planilha_final.to_dict(orient='records')
+        json_data = json.dumps({'dados': plan_json, 
+                                'arquivo': nome_arquivo,
+                                }, ensure_ascii=False, indent=4)
+        return {"status": "ok", "dados": planilha_final.to_dict(orient='records'), "arquivo": nome_arquivo}
+    
+    except Exception as e:
+        print(f"Ocorreu um erro! {e}")
+        if not tentativa_extra:
+            print("Tentando reagendar a tarefa...")
+            nova_tarefa = partial(atualizacao_diaria, tentativa_extra=True)
+            schedule.every(5).minutes.do(nova_tarefa_com_cancelamento(nova_tarefa))
+        return {"status": "erro", "mensagem": str(e)}
+
+def nova_tarefa_com_cancelamento(func):
+    def wrapper():
+        func()
+        return schedule.CancelJob
+    return wrapper
+
 def limpar_tmp_antigos(pasta='tmp', segundos=300):
     """
     Remove arquivos da pasta que são mais antigos que 'segundos' (default: 5 minutos).
@@ -72,6 +194,58 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
         except Exception as e:
             print(f"Erro ao tentar remover {arquivo}: {e}")
 
+def agendar_atualizacao():
+    print('agendar_atualizacao()')
+    schedule.every().day.at("00:00").do(atualizacao_diaria)
+
+    while True:
+        jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
+        schedule.run_pending()
+        print(jobs)
+        print(datetime.now().time())
+        time.sleep(20)
+
+# Inicia o agendamento em uma thread separada
+def start_thread():
+    print('start_thread()')
+    agendamento_thread = threading.Thread(target=agendar_atualizacao)
+    agendamento_thread.daemon = True # Isso permite que a thread seja finalizada quando o programa principal for finalizado
+    agendamento_thread.start()
+
+# Função para iniciar a thread de agendamento após o app estar configurado
+def init_agendamento():
+    print('init_agendamento()')
+    with app.app_context():
+        start_thread()  # Inicia a thread de agendamento
+
+# Executa o agendamento quando o app for iniciado
+init_agendamento()
+
+
+# Função para depois
+def exibir_grafico(grafico_id):
+    caminho = os.path.join('tmp', grafico_id)
+    if not os.path.exists(caminho):
+        return "Gráfico não encontrado", 404
+
+    with open(caminho, 'r', encoding='utf-8') as f:
+        dados_json  = json.load(f)
+
+    # ✅ Garante que labels e datasets existam
+    labels = dados_json.get('grafico', {}).get('labels', [])
+    datasets = dados_json.get('grafico', {}).get('datasets', [])
+
+    print(dados_json)
+
+    return render_template(
+        'grafico.html',
+        labelss=json.dumps(labels, ensure_ascii=False),
+        datasets=json.dumps(datasets, ensure_ascii=False),
+        dados=dados_json.get('dados', []),
+        arquivo=dados_json.get('arquivo', '')
+    )
+
 # Executando a aplicação
 if __name__ == '__main__':
     app.run(debug=True)
+

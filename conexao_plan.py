@@ -1,7 +1,7 @@
 import gspread
 from google.oauth2 import service_account
 import pandas as pd
-from datetime import date
+from datetime import date, timedelta
 from pandas.tseries.offsets import BDay
 import numpy as np
 
@@ -31,16 +31,22 @@ def busca_cargas(data_inicio,data_final):
     itens.columns = itens.iloc[0]
     itens = itens.drop(index=0)
 
+    #Tratando datas para formato brasileiro
+    data_inicio = pd.to_datetime(data_inicio,dayfirst=True)
+    data_final = pd.to_datetime(data_final,dayfirst=True)
+
     #Pegando somente as colunas de interesse
     itens = itens[['PED_PREVISAOEMISSAODOC','PED_RECURSO.CODIGO','PED_QUANTIDADE','Carga']]
-    itens['PED_PREVISAOEMISSAODOC'] = pd.to_datetime(itens['PED_PREVISAOEMISSAODOC'])
-    itens['PED_QUANTIDADE'] = pd.to_numeric(itens['PED_QUANTIDADE'])
+    itens['PED_PREVISAOEMISSAODOC'] = pd.to_datetime(itens['PED_PREVISAOEMISSAODOC'], dayfirst=True)
+    itens['PED_QUANTIDADE'] = pd.to_numeric(itens['PED_QUANTIDADE'].str.replace(',','.'))
     
     # Agrupando pela Data e pelo Codigo Carreta
     itens = itens.groupby(['PED_PREVISAOEMISSAODOC','PED_RECURSO.CODIGO','Carga'],as_index=False).sum()
 
     # Filtrando o DataFrame para pegar as linhas dentro do intervalo de datas
     itens_filtrados = itens[(itens['PED_PREVISAOEMISSAODOC'] >= data_inicio) & (itens['PED_PREVISAOEMISSAODOC'] <= data_final)]
+
+    print(itens_filtrados)
 
     #Desconsiderar os códigos de cores VJ, VM, AN, LC, LJ, AM
     codigos_desconsiderados = ['VJ', 'VM', 'AN', 'LC', 'LJ', 'AM']
@@ -50,8 +56,8 @@ def busca_cargas(data_inicio,data_final):
 
     # Remover os códigos indesejados (substituindo por uma string vazia)
     itens_filtrados.loc[:, 'PED_RECURSO.CODIGO'] = itens_filtrados['PED_RECURSO.CODIGO'].str.replace(padrao, '', regex=True)
-
-    print(itens_filtrados)
+    # Removendo espaços que ficaram
+    itens_filtrados['PED_RECURSO.CODIGO'] = itens_filtrados['PED_RECURSO.CODIGO'].str.strip()
 
     return itens_filtrados
 
@@ -80,8 +86,7 @@ def conectar_com_base(cargas_filtradas):
     itens = pd.DataFrame(list1)
     itens.columns = itens.iloc[0]
     itens = itens.drop(index=0)
-    
-    #Pegar as colunas que interessam
+
     
     itens = pd.merge(cargas_filtradas,itens,left_on='PED_RECURSO.CODIGO',right_on='carreta',how='left')
 
@@ -104,12 +109,58 @@ def conectar_com_base(cargas_filtradas):
     #Colunas Finais: Código, Descrição, quantidade de conjunto, data da carga
     return conjuntos_filtrados
 
+
+# Função que simula o DIATRABALHO (conta só dias úteis)
+def dias_uteis(data_inicial, dias):
+    data = data_inicial
+    cont = 0
+    passo = 1 if dias >= 0 else -1
+    while cont < abs(int(dias)):
+        data += timedelta(days=passo)
+        if data.weekday() < 5:  # Segunda a sexta (0 a 4)
+            cont += 1
+    return data
+
+# Função que replica a lógica da fórmula do Sheets de cores
+def calcular_cor(row):
+
+    etapa = row['Local']
+    data = pd.to_datetime(row['Data_COR'], dayfirst=True, errors='coerce')
+    emissao = pd.to_datetime(row['OPCIONAL_6_COR'], dayfirst=True, errors='coerce')
+    entrega = pd.to_datetime(row['Data_de_Entrega_COR'], dayfirst=True, errors='coerce')
+
+    # Define qual opcional usar
+    if etapa == 'MONTAGEM':
+        dias_op = pd.to_numeric(row['OPCIONAL_3_COR'])
+    elif etapa == 'SOLDA':
+        dias_op = pd.to_numeric(row['OPCIONAL_4_COR'])
+    elif etapa == 'PINTURA':
+        dias_op = pd.to_numeric(row['OPCIONAL_5_COR'])
+    else:
+        return np.nan
+
+    if dias_op == 0:
+        return '6.CINZA'
+    if pd.isna(data) or pd.isna(emissao) or pd.isna(entrega):
+        return ''
+    if data < emissao:
+        return '5.AZUL'
+    if emissao <= data <= dias_uteis(emissao, dias_op * 0.33):
+        return '4.VERDE'
+    if dias_uteis(emissao, dias_op * 0.33) < data <= dias_uteis(emissao, dias_op * 0.66):
+        return '3.AMARELO'
+    if dias_uteis(emissao, dias_op * 0.66) < data <= dias_uteis(emissao, dias_op * 1) and data <= entrega:
+        return '2.VERMELHO'
+    if data > entrega:
+        return '1.PRETO'
+    return ''
+
 def definir_leadtime(conjuntos):
 
     print(conjuntos)
 
     if conjuntos.empty:
-        return None
+        return conjuntos
 
     #Configuração inicial
     service_account_info = ["GOOGLE_SERVICE_ACCOUNT"]
@@ -384,7 +435,15 @@ def definir_leadtime(conjuntos):
     df_transformado['OPCIONAL 5'] = df_transformado['pintura']
     df_transformado['OPCIONAL 6'] = np.select(condicoes_opcional_6,valores_opcional_6,default='')
     df_transformado['OPCIONAL 7'] = df_transformado['carreta']
-    df_transformado['COR PRIORIDADE'] = ''
+    # SELECAO DA COR
+    df_transformado['Data_COR'] = pd.to_datetime(df_transformado['Data'], dayfirst=True, errors='coerce')
+    df_transformado['OPCIONAL_6_COR'] = pd.to_datetime(df_transformado['OPCIONAL 6'], dayfirst=True, errors='coerce')
+    df_transformado['Data_de_Entrega_COR'] = pd.to_datetime(df_transformado['Data de Entrega'], dayfirst=True, errors='coerce')
+    df_transformado['OPCIONAL_3_COR'] = pd.to_numeric(df_transformado['OPCIONAL 3'])
+    df_transformado['OPCIONAL_4_COR'] = pd.to_numeric(df_transformado['OPCIONAL 4'])
+    df_transformado['OPCIONAL_5_COR'] = pd.to_numeric(df_transformado['OPCIONAL 5'])
+
+    df_transformado['COR PRIORIDADE'] = df_transformado.apply(calcular_cor, axis=1)
 
 
     colunas_desejadas = ['Data','Ordem de Produção','Produto','Cor','Tamanho','Descrição do Produto','Quantidade','Quantidade_Original','Cliente','Unidade Fabril','Local',
@@ -393,10 +452,13 @@ def definir_leadtime(conjuntos):
 
     df_transformado = df_transformado[colunas_desejadas]
 
+    # print(df_transformado)
 
-    df_transformado = df_transformado.where(pd.notnull(df_transformado),None)
+    df_transformado = df_transformado.where(pd.notnull(df_transformado),None)   
 
     # plan = df_transformado.to_dict(orient='records')
 
     return df_transformado
+
+
 
