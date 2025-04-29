@@ -4,6 +4,7 @@ import time
 import json
 import uuid
 import glob
+import traceback
 from datetime import date, timedelta, datetime
 
 # 2. Bibliotecas externas
@@ -166,6 +167,7 @@ def atualizacao_diaria(tentativa_extra=False):
     
     except Exception as e:
         print(f"Ocorreu um erro! {e}")
+        traceback.print_exc()
         if not tentativa_extra:
             print("Tentando reagendar a tarefa...")
             nova_tarefa = partial(atualizacao_diaria, tentativa_extra=True)
