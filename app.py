@@ -132,9 +132,9 @@ def atualizacao_diaria(tentativa_extra=False):
             return "Arquivo já existe"
 
         if data_atual.day > 15:
-            data_inicio = date(data_atual.year,data_atual.month,16)
+            data_inicio = datetime(data_atual.year,data_atual.month,16)
         else:
-            data_inicio = date(data_atual.year,data_atual.month,1)
+            data_inicio = datetime(data_atual.year,data_atual.month,1)
 
         data_final = data_inicio + timedelta(days=15)
 
