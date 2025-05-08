@@ -41,9 +41,13 @@ def busca_cargas(data_inicio,data_final):
     # Agrupando pela Data e pelo Codigo Carreta
     itens = itens.groupby(['PED_PREVISAOEMISSAODOC','PED_RECURSO.CODIGO','Carga'],as_index=False).sum()
 
+    # print('itens-------')
+    # print(itens)
+
     # Filtrando o DataFrame para pegar as linhas dentro do intervalo de datas
     itens_filtrados = itens[(itens['PED_PREVISAOEMISSAODOC'] >= data_inicio) & (itens['PED_PREVISAOEMISSAODOC'] <= data_final)]
-
+    print('itens-------')
+    print(itens_filtrados)
     # print(itens_filtrados)
 
     #Desconsiderar os códigos de cores VJ, VM, AN, LC, LJ, AM
@@ -267,8 +271,6 @@ def definir_leadtime(conjuntos):
 
     itens_apontamento_solda['etapa'] = 'solda' 
     itens_apontamento_solda = itens_apontamento_solda[~(itens_apontamento_solda['codigo'].isna() | (itens_apontamento_solda['codigo'] == ''))]
-    # print(itens_apontamento_solda)
-
 
 
     #Concatenando as três planilhas de tempos
@@ -298,8 +300,6 @@ def definir_leadtime(conjuntos):
     # pd.set_option('display.max_columns', None)
     # pd.set_option('display.max_rows', None)
 
-    print(conjuntos_tempos)
-
 
     # PLANILHA APONTAMENTO MONTAGEM
     wks_apontamento = sh_apontamento.worksheet('RQ PCP 002-000 (APONTAMENTO MONTAGEM)')
@@ -314,6 +314,7 @@ def definir_leadtime(conjuntos):
     itens_montagem = itens_montagem.groupby(['Código','Célula'],as_index=False).first().reset_index()
 
     conjuntos_tempos_montagem = pd.merge(conjuntos_tempos,itens_montagem,left_on='COD',right_on='Código',how='inner')
+
 
     #worksheet_name - LEADTIME
     wks = sh_leadtime.worksheet('Página3')
@@ -334,10 +335,26 @@ def definir_leadtime(conjuntos):
 
     # Lista para armazenar as novas linhas
     novas_linhas = []
-    
+    # print(itens)
+    codigo_anterior = ''
+    setores_adicionados = []
+
+    itens.reset_index(drop=True, inplace=True)
+
     # Iterar sobre cada linha do DataFrame
-    for _, row in itens.iterrows():
+    for i in range(len(itens) - 1):
+    # for _, row in itens.iterrows():
+        row = itens.loc[i]
+        row_prox = itens.loc[i+1]
+
+        if i + 1 > len(itens) - 1:
+            row_prox = row
+
         
+        if codigo_anterior != row['Código']:
+            setores_adicionados.clear()
+        
+        codigo_anterior = row['Código']
         #VERIFICADORES DE MONTAGEM
         lead_time_montagem_check = row['lead time montagem'] != '0' and row['lead time montagem'] != '' and row['lead time montagem'] != '?' and row['lead time montagem'] != '#VALUE!' and row['lead time montagem'] != '#N/A'
         etapa_montagem_check = row['etapa_x'] == 'montagem' and row['etapa_y'] == 'montagem'
@@ -351,33 +368,39 @@ def definir_leadtime(conjuntos):
         etapa_pintura_check = row['etapa_x'] == 'pintura' and row['etapa_y'] == 'pintura'
 
         #VERIFICADOR DIFERENTE DE TUDO
-        etapa_diff_tudo = not etapa_montagem_check and not etapa_solda_check and not etapa_pintura_check
+        # etapa_diff_tudo = not etapa_montagem_check and not etapa_solda_check and not etapa_pintura_check
+
+        #verificar 
 
         if lead_time_montagem_check and etapa_montagem_check:
             linha = {coluna: row[coluna] for coluna in itens.columns}
             linha['ETAPA'] = 'MONTAGEM'
             novas_linhas.append(linha)
+            setores_adicionados.append('montagem')
             
             
-        elif lead_time_montagem_check and etapa_diff_tudo:
+        elif lead_time_montagem_check and 'montagem' not in setores_adicionados and row_prox['Código'] != row['Código']:
             linha = {coluna: row[coluna] for coluna in itens.columns}
             linha['ETAPA'] = 'MONTAGEM'
             linha['data_inicio'] = None
             linha['data_fim_tratada'] = None
             novas_linhas.append(linha)
+            setores_adicionados.append('montagem')
 
         # MANTER PARA QUANDO FOR ESTABELECER OS TEMPOS DE SOLDA
         if  lead_time_solda_check and etapa_solda_check:
             linha = {coluna: row[coluna] for coluna in itens.columns}
             linha['ETAPA'] = 'SOLDA'
             novas_linhas.append(linha)
+            setores_adicionados.append('solda')
 
-        elif lead_time_solda_check and etapa_diff_tudo:
+        elif lead_time_solda_check and 'solda' not in setores_adicionados and row_prox['Código'] != row['Código']:
             linha = {coluna: row[coluna] for coluna in itens.columns}
             linha['ETAPA'] = 'SOLDA'
             linha['data_inicio'] = None
             linha['data_fim_tratada'] = None
             novas_linhas.append(linha)
+            setores_adicionados.append('solda')
         # MANTER PARA QUANDO FOR ESTABELECER OS TEMPOS DE MONTAGEM DE MADEIRA
         # if row['lead time montar madeira'] != '0' and row['lead time montar madeira'] != '' and row['lead time montar madeira'] != '?' and row['lead time montar madeira'] != '#VALUE!':
         #     # colunas_excluidas = ['data_inicio','data_fim_tratada']
@@ -393,13 +416,15 @@ def definir_leadtime(conjuntos):
             linha = {coluna: row[coluna] for coluna in itens.columns}
             linha['ETAPA'] = 'PINTURA'
             novas_linhas.append(linha)
+            setores_adicionados.append('pintura')
         # Não está apontada na planilha
-        elif lead_time_pintura_check and etapa_diff_tudo:
+        elif lead_time_pintura_check and 'pintura' not in setores_adicionados and row_prox['Código'] != row['Código']:
             linha = {coluna: row[coluna] for coluna in itens.columns}
             linha['ETAPA'] = 'PINTURA'
             linha['data_inicio'] = None
             linha['data_fim_tratada'] = None
             novas_linhas.append(linha)
+            setores_adicionados.append('pintura')
         
 
     df_transformado = pd.DataFrame(novas_linhas)
