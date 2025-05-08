@@ -4,8 +4,19 @@ import pandas as pd
 from datetime import date, timedelta
 from pandas.tseries.offsets import BDay
 import numpy as np
+import requests
 
 def busca_cargas(data_inicio,data_final):
+
+    # url = "https://cemagprod.onrender.com/api/publica/apontamento/tempo-processo-montagem"
+
+    # response = requests.get(url)
+
+    # if response.status_code == 200:
+    #     dados = response.json()
+    #     print(dados)
+    # else:
+    #     print(f'Erro na requisição: {response.status_code}')
 
     #Configuração inicial
     service_account_info = ["GOOGLE_SERVICE_ACCOUNT"]
@@ -111,7 +122,16 @@ def conectar_com_base(cargas_filtradas):
     #Colunas Finais: Código, Descrição, quantidade de conjunto, data da carga
     return conjuntos_filtrados
 
-
+def parse_data_condicional(data_str):
+    if pd.isna(data_str):
+        return pd.NaT
+    if 'T' in data_str:
+        # Trata como ISO 8601, com ou sem 'Z'
+        data_str = data_str.replace('Z', '')  # Remove o 'Z' se houver
+        return pd.to_datetime(data_str, utc=True, errors='coerce')
+    else:
+        # Trata como dd/mm/yyyy HH:MM:SS
+        return pd.to_datetime(data_str, dayfirst=True, errors='coerce')
 # Função que simula o DIATRABALHO (conta só dias úteis)
 def dias_uteis(data_inicial, dias):
     data = data_inicial
@@ -244,11 +264,22 @@ def definir_leadtime(conjuntos):
     itens_tempos_montagem['etapa'] = 'montagem'
     itens_pintura['etapa'] = 'pintura'
 
-    itens_tempos_montagem['data_inicio'] = pd.to_datetime(itens_tempos_montagem['data_inicio'],dayfirst=True)
-    itens_pintura['data_inicio'] = pd.to_datetime(itens_pintura['data_inicio'],dayfirst=True)
-    itens_tempos_montagem['data_fim_tratada'] = pd.to_datetime(itens_tempos_montagem['data_fim_tratada'],dayfirst=True)
-    itens_pintura['data_fim_tratada'] = pd.to_datetime(itens_pintura['data_fim_tratada'],dayfirst=True)
+    # itens_tempos_montagem['data_inicio'] = pd.to_datetime(itens_tempos_montagem['data_inicio'],dayfirst=True)
+    # itens_pintura['data_inicio'] = pd.to_datetime(itens_pintura['data_inicio'],dayfirst=True)
+    # itens_tempos_montagem['data_fim_tratada'] = pd.to_datetime(itens_tempos_montagem['data_fim_tratada'],dayfirst=True)
+    # itens_pintura['data_fim_tratada'] = pd.to_datetime(itens_pintura['data_fim_tratada'],dayfirst=True)
 
+    itens_tempos_montagem['data_inicio'] = itens_tempos_montagem['data_inicio'].apply(parse_data_condicional)
+    itens_pintura['data_inicio'] = itens_pintura['data_inicio'].apply(parse_data_condicional)
+    itens_tempos_montagem['data_inicio'] = itens_tempos_montagem['data_fim_tratada'].apply(parse_data_condicional)
+    itens_pintura['data_inicio'] = itens_pintura['data_fim_tratada'].apply(parse_data_condicional)
+        
+
+    
+    print(itens_tempos_montagem['data_inicio'])
+    print(itens_pintura['data_inicio'])
+    print(itens_tempos_montagem['data_fim_tratada'])
+    print(itens_pintura['data_fim_tratada'])
 
     #Tratando o df de solda para pegar as colunas de apontamento Solda
     itens_apontamento_solda = pd.DataFrame(list_apontamento_solda)
