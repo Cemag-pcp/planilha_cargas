@@ -226,6 +226,8 @@ def init_agendamento():
 # Executa o agendamento quando o app for iniciado
 init_agendamento()
 
+print('teste')
+
 
 # Função para depois
 def exibir_grafico(grafico_id):
