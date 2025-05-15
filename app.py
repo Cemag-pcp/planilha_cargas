@@ -134,11 +134,8 @@ def atualizacao_diaria(tentativa_extra=False):
             os.remove(caminho_arquivo)
             print('Arquivo deletado')
 
-        if data_atual.day > 15:
-            data_inicio = datetime(data_atual.year,data_atual.month,16)
-        else:
-            data_inicio = datetime(data_atual.year,data_atual.month,1)
 
+        data_inicio = datetime(data_atual.year,data_atual.month,data_atual.day)
         data_final = data_inicio + timedelta(days=15)
 
         
@@ -225,8 +222,6 @@ def init_agendamento():
 
 # Executa o agendamento quando o app for iniciado
 init_agendamento()
-
-print('teste')
 
 
 # Função para depois
