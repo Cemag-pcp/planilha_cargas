@@ -127,12 +127,12 @@ def atualizacao_diaria(tentativa_extra=False):
         data_atual_arquivo = data_atual
         caminho_arquivo = os.path.join("atualizacao-diaria", f"cargas_{data_atual_arquivo}.xlsx")  # pasta "tmp" deve existir
 
-        if os.path.exists(caminho_arquivo) and datetime.now().hour <= 18:
-            print('Arquivo do dia já existe!')
-            return "Arquivo já existe"
-        elif os.path.exists(caminho_arquivo) and datetime.now().hour > 18:
-            os.remove(caminho_arquivo)
-            print('Arquivo deletado')
+        # if os.path.exists(caminho_arquivo) and datetime.now().hour <= 14:
+        #     print('Arquivo do dia já existe!')
+        #     return "Arquivo já existe"
+        # elif os.path.exists(caminho_arquivo) and datetime.now().hour > 15:
+        #     os.remove(caminho_arquivo)
+        #     print('Arquivo deletado')
 
 
         data_inicio = datetime(data_atual.year,data_atual.month,data_atual.day)
@@ -147,6 +147,7 @@ def atualizacao_diaria(tentativa_extra=False):
         planilha_final = definir_leadtime(conjuntos_filtrados)
 
         if planilha_final.empty:
+            print('Planilha vazia!')
             return {"status": "vazio"}
 
         # Gera nome único para o arquivo
@@ -198,14 +199,14 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
 
 def agendar_atualizacao():
     print('agendar_atualizacao()')
-    schedule.every().day.at("06:30").do(atualizacao_diaria)
-    schedule.every().day.at("18:30").do(atualizacao_diaria)
+    schedule.every().day.at("15:12").do(atualizacao_diaria)
+    schedule.every().day.at("15:15").do(atualizacao_diaria)
 
     while True:
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
         print(jobs)
-        time.sleep(300)
+        time.sleep(10)
 
 # Inicia o agendamento em uma thread separada
 def start_thread():
