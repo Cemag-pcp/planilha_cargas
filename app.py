@@ -199,14 +199,14 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
 
 def agendar_atualizacao():
     print('agendar_atualizacao()')
-    schedule.every().day.at("15:12").do(atualizacao_diaria)
-    schedule.every().day.at("15:15").do(atualizacao_diaria)
+    schedule.every().day.at("06:30").do(atualizacao_diaria)
+    schedule.every().day.at("18:30").do(atualizacao_diaria)
 
     while True:
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
         print(jobs)
-        time.sleep(10)
+        time.sleep(300)
 
 # Inicia o agendamento em uma thread separada
 def start_thread():
