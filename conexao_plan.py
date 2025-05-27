@@ -582,6 +582,7 @@ def definir_leadtime(conjuntos):
 
     df_transformado['COR PRIORIDADE'] = df_transformado.apply(calcular_cor, axis=1)
 
+    df_transformado = df_transformado.sort_values(by='PED_PREVISAOEMISSAODOC')
 
     colunas_desejadas = ['Data','Ordem de Produção','Produto','Cor','Tamanho','Descrição do Produto','Quantidade','Quantidade_Original','Cliente','Unidade Fabril','Local',
                          'Recurso','Grupo','SubGrupo','Status','Data de Emissão','Data de Liberação','Data de Entrega','Data de Encerramento','Valor Unitário',
@@ -591,7 +592,7 @@ def definir_leadtime(conjuntos):
 
     # print(df_transformado)
 
-    df_transformado = df_transformado.where(pd.notnull(df_transformado),None)   
+    df_transformado = df_transformado.where(pd.notnull(df_transformado),None)
 
     # plan = df_transformado.to_dict(orient='records')
 
