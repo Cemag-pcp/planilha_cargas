@@ -6,6 +6,8 @@ import uuid
 import glob
 import traceback
 from datetime import date, timedelta, datetime
+import requests
+from zoneinfo import ZoneInfo
 
 # 2. Bibliotecas externas
 from flask import Flask, render_template, request, Response, send_file
@@ -125,7 +127,7 @@ def atualizacao_diaria(tentativa_extra=False):
         
         data_atual = date.today()
         data_atual_arquivo = data_atual
-        caminho_arquivo = os.path.join("atualizacao-diaria", f"cargas_{data_atual_arquivo}.xlsx")  # pasta "tmp" deve existir
+        # caminho_arquivo = os.path.join("atualizacao-diaria", f"cargas_{data_atual_arquivo}.xlsx")  # pasta "tmp" deve existir
 
         # if os.path.exists(caminho_arquivo) and datetime.now().hour <= 14:
         #     print('Arquivo do dia já existe!')
@@ -134,11 +136,31 @@ def atualizacao_diaria(tentativa_extra=False):
         #     os.remove(caminho_arquivo)
         #     print('Arquivo deletado')
 
-
         data_inicio = datetime(data_atual.year,data_atual.month,data_atual.day)
         data_final = data_inicio + timedelta(days=15)
 
-        
+        data_inicio_formato_api = datetime(data_atual.year,data_atual.month,data_atual.day,tzinfo=ZoneInfo("America/Sao_Paulo"))
+        data_final_formato_api = data_inicio_formato_api.isoformat()
+
+        try:
+            url = f"https://apontamentousinagem.onrender.com/cargas/api/andamento-cargas?start=2025-05-19T00:00:00-03:00&end={data_final_formato_api}"
+
+            response = requests.get(url)
+
+            if response.status_code == 200:
+                dados = response.json()
+                for data in dados:
+                    porcentagem_concluida = float(data['title'].split('-')[1].replace('%','').strip())
+                    if porcentagem_concluida < 100.0:
+                        dia_com_carga_aberta = data['start'] + ' 00:00:00'
+                        data_inicio = datetime.strptime(dia_com_carga_aberta,"%Y-%m-%d %H:%M:%S")
+                        print(f'Ainda resta carga para o dia {dia_com_carga_aberta}, iniciando a partir deste dia.')
+                        break
+            else:
+                print(f'Erro na requisição: {response.status_code}')
+        except Exception as e:
+            print(f'Erro na API:{e}')
+
         print(data_inicio)
         print(data_final)
         
@@ -206,7 +228,7 @@ def agendar_atualizacao():
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
         print(jobs)
-        time.sleep(300)
+        time.sleep(20)
 
 # Inicia o agendamento em uma thread separada
 def start_thread():
