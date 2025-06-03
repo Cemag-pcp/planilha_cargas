@@ -222,7 +222,7 @@ def definir_leadtime(conjuntos):
     sh_apontamento_solda = client.open_by_key(sheet_id_apontamento_solda)
     
     #PLANILHA APONTAMENTO SOLDA
-    wks_apontamento_solda = sh_apontamento_solda.worksheet('Página1')
+    wks_apontamento_solda = sh_apontamento_solda.worksheet('RQ PCP-031-000 (APONTAMENTO SOLDA)')
     list_apontamento_solda = wks_apontamento_solda.get_all_values()
 
     # PLANILHA TEMPOS SOLDA/MONTAGEM (ABA dados)
