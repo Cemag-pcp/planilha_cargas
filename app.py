@@ -143,7 +143,7 @@ def atualizacao_diaria(tentativa_extra=False):
         data_final_formato_api = data_inicio_formato_api.isoformat()
 
         try:
-            url = f"https://apontamentousinagem.onrender.com/cargas/api/andamento-cargas?start=2025-05-19T00:00:00-03:00&end={data_final_formato_api}"
+            url = f"https://apontamentousinagem.onrender.com/cargas/api/andamento-cargas?start=2025-06-01T00:00:00-03:00&end={data_final_formato_api}"
 
             response = requests.get(url)
 
