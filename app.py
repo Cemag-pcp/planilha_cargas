@@ -240,13 +240,13 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
 
 def agendar_atualizacao():
     print('agendar_atualizacao()')
-    schedule.every().day.at("18:17").do(atualizacao_diaria)
+    schedule.every().day.at("06:30").do(atualizacao_diaria)
     schedule.every().day.at("18:30").do(atualizacao_diaria)
 
     while True:
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
-        time.sleep(3)
+        time.sleep(300)
         if (datetime.now().hour == 9 and datetime.now().minute >= 40) or datetime.now().hour == 20 and datetime.now().minute >= 40:
             print(jobs)
 
