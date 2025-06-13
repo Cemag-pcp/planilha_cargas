@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from pandas.tseries.offsets import BDay
 import numpy as np
 import requests
+import os
 
 def busca_cargas(data_inicio,data_final):
 
@@ -241,6 +242,7 @@ def definir_leadtime(conjuntos):
     itens_tempos_montagem['data_carga'] = pd.to_datetime(itens_tempos_montagem['data_carga'],dayfirst=True)
 
     itens_tempos_montagem = itens_tempos_montagem[['codigo','data_inicio','data_fim_tratada','data_carga','qt_planejada','qt_apontada']]
+    itens_tempos_montagem['codigo'] = itens_tempos_montagem['codigo'].str.split('-').str[0].str.strip()  # Pega somente o código antes do traço
 
     #Tratando o df de pintura para pegar as colunas de dados Pintura
 
@@ -263,11 +265,6 @@ def definir_leadtime(conjuntos):
 
     itens_tempos_montagem['etapa'] = 'montagem'
     itens_pintura['etapa'] = 'pintura'
-
-    # itens_tempos_montagem['data_inicio'] = pd.to_datetime(itens_tempos_montagem['data_inicio'],dayfirst=True)
-    # itens_pintura['data_inicio'] = pd.to_datetime(itens_pintura['data_inicio'],dayfirst=True)
-    # itens_tempos_montagem['data_fim_tratada'] = pd.to_datetime(itens_tempos_montagem['data_fim_tratada'],dayfirst=True)
-    # itens_pintura['data_fim_tratada'] = pd.to_datetime(itens_pintura['data_fim_tratada'],dayfirst=True)
 
     itens_tempos_montagem['data_inicio'] = itens_tempos_montagem['data_inicio'].apply(parse_data_condicional)
     itens_pintura['data_inicio'] = itens_pintura['data_inicio'].apply(parse_data_condicional)
@@ -320,16 +317,12 @@ def definir_leadtime(conjuntos):
         'qt_apontada': 'last',
     })
 
-
     # PEGANDO OS CODIGOS QUE CONTEM ZERO E ESTABELECENDO OUTRA COLUNA
     conjuntos['CODIG'] = conjuntos['COD'].str.lstrip('0')
 
     # 3. Juntar com a tabela A
     df_resultado = pd.merge(conjuntos, primeira_aparicao, left_on=['CODIG','PED_PREVISAOEMISSAODOC'], right_on=['codigo','data_carga'], how='left')
     conjuntos_tempos = pd.merge(df_resultado, ultima_aparicao, left_on=['CODIG','PED_PREVISAOEMISSAODOC'], right_on=['codigo','data_carga'], how='left')
-
-    # pd.set_option('display.max_columns', None)
-    # pd.set_option('display.max_rows', None)
 
 
     # PLANILHA APONTAMENTO MONTAGEM
