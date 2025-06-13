@@ -17,6 +17,7 @@ from functools import partial
 
 # 3. Imports locais
 from conexao_plan import busca_cargas, conectar_com_base, definir_leadtime
+from unificar import unificar_planilhas
 
 
 # Criando a instância da aplicação Flask
@@ -139,23 +140,36 @@ def atualizacao_diaria(tentativa_extra=False):
         data_inicio = datetime(data_atual.year,data_atual.month,data_atual.day)
         data_final = data_inicio + timedelta(days=15)
 
-        data_inicio_formato_api = datetime(data_atual.year,data_atual.month,data_atual.day,tzinfo=ZoneInfo("America/Sao_Paulo"))
-        data_final_formato_api = data_inicio_formato_api.isoformat()
+        # data_inicio_formato_api = datetime(data_atual.year,data_atual.month,data_atual.day,tzinfo=ZoneInfo("America/Sao_Paulo"))
+        data_final = datetime(data_final.year, data_final.month, data_final.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
+        data_final_formato_api = data_final.isoformat()
+        data_inicio_busca = datetime(2025,6,1)
 
         try:
             url = f"https://apontamentousinagem.onrender.com/cargas/api/andamento-cargas?start=2025-06-01T00:00:00-03:00&end={data_final_formato_api}"
 
             response = requests.get(url)
-
             if response.status_code == 200:
                 dados = response.json()
+                tamanho_dados = len(dados)
+                print(f'Tamanho dos dados recebidos: {tamanho_dados}')
+                cont = 0
+                data_inicio_escolhida = False
                 for data in dados:
                     porcentagem_concluida = float(data['title'].split('-')[1].replace('%','').strip())
-                    if porcentagem_concluida < 100.0:
+                    if porcentagem_concluida < 100.0 and not data_inicio_escolhida:
                         dia_com_carga_aberta = data['start'] + ' 00:00:00'
                         data_inicio = datetime.strptime(dia_com_carga_aberta,"%Y-%m-%d %H:%M:%S")
                         print(f'Ainda resta carga para o dia {dia_com_carga_aberta}, iniciando a partir deste dia.')
+                        data_inicio_escolhida = True
+                    if cont == (tamanho_dados/2) - 1:
+                        ultimo_dia = data['start'] + ' 00:00:00'
+                        data_final = datetime.strptime(ultimo_dia,"%Y-%m-%d %H:%M:%S")
+                        print(f'Último dia de carga liberada: {ultimo_dia}')
                         break
+
+                    cont+=1
+                    
             else:
                 print(f'Erro na requisição: {response.status_code}')
         except Exception as e:
@@ -181,6 +195,10 @@ def atualizacao_diaria(tentativa_extra=False):
 
         # Salva o DataFrame como Excel em disco
         planilha_final.to_excel(caminho, index=False)
+
+        time.sleep(1)  # Aguarda 1 segundo para garantir que o arquivo foi salvo
+        # Junta as planilhas unificadas
+        unificar_planilhas(data_atual, data_final, data_inicio_busca)
 
         # Prepara JSON de resposta
         plan_json = planilha_final.to_dict(orient='records')
@@ -222,13 +240,13 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
 
 def agendar_atualizacao():
     print('agendar_atualizacao()')
-    schedule.every().day.at("06:30").do(atualizacao_diaria)
+    schedule.every().day.at("18:17").do(atualizacao_diaria)
     schedule.every().day.at("18:30").do(atualizacao_diaria)
 
     while True:
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
-        time.sleep(300)
+        time.sleep(3)
         if (datetime.now().hour == 9 and datetime.now().minute >= 40) or datetime.now().hour == 20 and datetime.now().minute >= 40:
             print(jobs)
 
