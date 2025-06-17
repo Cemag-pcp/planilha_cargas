@@ -21,30 +21,35 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
             df = pd.read_excel(caminho_arquivo)  # Lê a primeira aba
             df['OPCIONAL 2'] = pd.to_datetime(df['OPCIONAL 2'], dayfirst=True, errors='coerce')
             data_limite = pd.Timestamp(data_final)
-            df = df[df['OPCIONAL 2'] <= data_limite]
-            
+            df = df[df['OPCIONAL 2'] <= data_limite]           
             # df['Arquivo_Origem'] = arquivo  # (opcional) adiciona coluna com nome do arquivo de origem
             todas_planilhas.append(df)
 
-    # Junta todos os DataFrames
-    planilha_unificada_final = pd.concat(todas_planilhas, ignore_index=True)
-    # Excluir linhas duplicadas
-    # planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
-    # planilha_unificada_finalizadas = planilha_unificada_finalizadas.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7'])
+    # Pega a planilha de hoje, que é a última da lista e remove ela da lista
+    planilha_de_hoje = todas_planilhas.pop()
+    # Junta todos os DataFrames menos o de hoje
+    planilha_unificada = pd.concat(todas_planilhas, ignore_index=True)
+    
+    # Remove duplicatas, mantendo apenas as linhas com status 'Finalizada'
+    planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
+    planilha_unificada_finalizadas = planilha_unificada_finalizadas.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7'])
+    #Modificando a coluna 'Data' para a data de hoje
+    planilha_unificada_finalizadas['Data'] = datetime.today().strftime('%d/%m/%Y')
 
-    #pegando a ultima planilha da lista que no caso é a de hoje
-    # planilha_de_hoje = todas_planilhas[-1]
-    # planilha_de_hoje = planilha_de_hoje[planilha_de_hoje['Status'] != 'Finalizada']
+
+
 
     # Juntar as planilhas unificadas com a planilha de hoje
-    # planilha_unificada_final = pd.concat([planilha_unificada_finalizadas, planilha_de_hoje], ignore_index=True)
+    planilha_unificada_final = pd.concat([planilha_unificada,planilha_unificada_finalizadas,planilha_de_hoje], ignore_index=True)
 
     planilha_unificada_final = planilha_unificada_final.sort_values(by='OPCIONAL 2')
     planilha_unificada_final['OPCIONAL 2'] = planilha_unificada_final['OPCIONAL 2'].dt.strftime('%d/%m/%Y')
     # Salva em um novo arquivo Excel
-    planilha_unificada_final.to_excel(caminho, index=False)
+    # planilha_unificada_final.to_excel(caminho, index=False)
 
-    print(f'Planilhas unificadas com sucesso: {caminho}')
+    print(f'Planilhas unificadas com sucesso:')
+
+    return planilha_unificada_final
 
 
 def verifica_data_arquivo(nome_arquivo, data_limite):

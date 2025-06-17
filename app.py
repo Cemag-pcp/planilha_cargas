@@ -193,19 +193,20 @@ def atualizacao_diaria(tentativa_extra=False):
         caminho = os.path.join("atualizacao-diaria", nome_arquivo)  # pasta "tmp" deve existir
         print(caminho)
 
+        df_unificado = unificar_planilhas(data_atual, data_final, data_inicio_busca)
         # Salva o DataFrame como Excel em disco
-        planilha_final.to_excel(caminho, index=False)
+        df_unificado.to_excel(caminho, index=False)
 
         time.sleep(1)  # Aguarda 1 segundo para garantir que o arquivo foi salvo
         # Junta as planilhas unificadas
-        unificar_planilhas(data_atual, data_final, data_inicio_busca)
+        
 
         # Prepara JSON de resposta
-        plan_json = planilha_final.to_dict(orient='records')
+        plan_json = df_unificado.to_dict(orient='records')
         json_data = json.dumps({'dados': plan_json, 
                                 'arquivo': nome_arquivo,
                                 }, ensure_ascii=False, indent=4)
-        return {"status": "ok", "dados": planilha_final.to_dict(orient='records'), "arquivo": nome_arquivo}
+        return {"status": "ok", "dados": df_unificado.to_dict(orient='records'), "arquivo": nome_arquivo}
     
     except Exception as e:
         print(f"Ocorreu um erro! {e}")
@@ -240,13 +241,13 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
 
 def agendar_atualizacao():
     print('agendar_atualizacao()')
-    schedule.every().day.at("06:30").do(atualizacao_diaria)
+    schedule.every().day.at("17:02").do(atualizacao_diaria)
     schedule.every().day.at("18:30").do(atualizacao_diaria)
 
     while True:
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
-        time.sleep(300)
+        time.sleep(3)
         if (datetime.now().hour == 9 and datetime.now().minute >= 40) or datetime.now().hour == 20 and datetime.now().minute >= 40:
             print(jobs)
 
