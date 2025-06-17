@@ -193,13 +193,14 @@ def atualizacao_diaria(tentativa_extra=False):
         caminho = os.path.join("atualizacao-diaria", nome_arquivo)  # pasta "tmp" deve existir
         print(caminho)
 
-        df_unificado = unificar_planilhas(data_atual, data_final, data_inicio_busca)
         # Salva o DataFrame como Excel em disco
-        df_unificado.to_excel(caminho, index=False)
+        planilha_final.to_excel(caminho, index=False)
 
-        time.sleep(1)  # Aguarda 1 segundo para garantir que o arquivo foi salvo
+        time.sleep(5)  # Aguarda 5 segundos para garantir que o arquivo foi salvo
         # Junta as planilhas unificadas
-        
+        df_unificado = unificar_planilhas(data_atual, data_final, data_inicio_busca)
+
+        df_unificado.to_excel(caminho, index=False)
 
         # Prepara JSON de resposta
         plan_json = df_unificado.to_dict(orient='records')
@@ -241,7 +242,7 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
 
 def agendar_atualizacao():
     print('agendar_atualizacao()')
-    schedule.every().day.at("06:30").do(atualizacao_diaria)
+    schedule.every().day.at("17:02").do(atualizacao_diaria)
     schedule.every().day.at("18:30").do(atualizacao_diaria)
 
     while True:
