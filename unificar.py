@@ -23,21 +23,21 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
             data_limite = pd.Timestamp(data_final)
             df = df[df['OPCIONAL 2'] <= data_limite]
             
-            df['Arquivo_Origem'] = arquivo  # (opcional) adiciona coluna com nome do arquivo de origem
+            # df['Arquivo_Origem'] = arquivo  # (opcional) adiciona coluna com nome do arquivo de origem
             todas_planilhas.append(df)
 
     # Junta todos os DataFrames
-    planilha_unificada = pd.concat(todas_planilhas, ignore_index=True)
+    planilha_unificada_final = pd.concat(todas_planilhas, ignore_index=True)
     # Excluir linhas duplicadas
-    planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
-    planilha_unificada_finalizadas = planilha_unificada_finalizadas.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7'])
+    # planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
+    # planilha_unificada_finalizadas = planilha_unificada_finalizadas.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7'])
 
     #pegando a ultima planilha da lista que no caso é a de hoje
-    planilha_de_hoje = todas_planilhas[-1]
-    planilha_de_hoje = planilha_de_hoje[planilha_de_hoje['Status'] != 'Finalizada']
+    # planilha_de_hoje = todas_planilhas[-1]
+    # planilha_de_hoje = planilha_de_hoje[planilha_de_hoje['Status'] != 'Finalizada']
 
     # Juntar as planilhas unificadas com a planilha de hoje
-    planilha_unificada_final = pd.concat([planilha_unificada_finalizadas, planilha_de_hoje], ignore_index=True)
+    # planilha_unificada_final = pd.concat([planilha_unificada_finalizadas, planilha_de_hoje], ignore_index=True)
 
     planilha_unificada_final = planilha_unificada_final.sort_values(by='OPCIONAL 2')
     planilha_unificada_final['OPCIONAL 2'] = planilha_unificada_final['OPCIONAL 2'].dt.strftime('%d/%m/%Y')
