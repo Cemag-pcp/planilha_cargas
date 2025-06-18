@@ -123,16 +123,43 @@ def conectar_com_base(cargas_filtradas):
     #Colunas Finais: Código, Descrição, quantidade de conjunto, data da carga
     return conjuntos_filtrados
 
+# def parse_data_condicional(data_str):
+#     if pd.isna(data_str):
+#         return pd.NaT
+#     if 'T' in data_str:
+#         # Trata como ISO 8601, com ou sem 'Z'
+#         data_str = data_str.replace('Z', '')  # Remove o 'Z' se houver
+#         return pd.to_datetime(data_str, utc=True, errors='coerce')
+#     else:
+#         # Trata como dd/mm/yyyy HH:MM:SS
+#         return pd.to_datetime(data_str, dayfirst=True, errors='coerce')
 def parse_data_condicional(data_str):
     if pd.isna(data_str):
         return pd.NaT
+
+    data_str = str(data_str).strip()
+
+    if data_str in ["?", "N/A", "Erro", "", "nan", "-"]:
+        return pd.NaT
+
     if 'T' in data_str:
-        # Trata como ISO 8601, com ou sem 'Z'
-        data_str = data_str.replace('Z', '')  # Remove o 'Z' se houver
-        return pd.to_datetime(data_str, utc=True, errors='coerce')
+        data = pd.to_datetime(data_str.replace('Z', ''), utc=True, errors='coerce')
     else:
-        # Trata como dd/mm/yyyy HH:MM:SS
-        return pd.to_datetime(data_str, dayfirst=True, errors='coerce')
+        data = pd.to_datetime(data_str, dayfirst=True, errors='coerce')
+
+    if pd.isna(data):
+        return pd.NaT
+
+    # Remove o timezone se houver
+    if data.tzinfo:
+        data = data.tz_convert(None)
+
+    # Normaliza para remover hora
+    return data.normalize()
+
+
+
+
 # Função que simula o DIATRABALHO (conta só dias úteis)
 def dias_uteis(data_inicial, dias):
     data = data_inicial
@@ -268,8 +295,8 @@ def definir_leadtime(conjuntos):
 
     itens_tempos_montagem['data_inicio'] = itens_tempos_montagem['data_inicio'].apply(parse_data_condicional)
     itens_pintura['data_inicio'] = itens_pintura['data_inicio'].apply(parse_data_condicional)
-    itens_tempos_montagem['data_inicio'] = itens_tempos_montagem['data_fim_tratada'].apply(parse_data_condicional)
-    itens_pintura['data_inicio'] = itens_pintura['data_fim_tratada'].apply(parse_data_condicional)
+    itens_tempos_montagem['data_fim_tratada'] = itens_tempos_montagem['data_fim_tratada'].apply(parse_data_condicional)
+    itens_pintura['data_fim_tratada'] = itens_pintura['data_fim_tratada'].apply(parse_data_condicional)
         
 
     
@@ -291,9 +318,27 @@ def definir_leadtime(conjuntos):
     itens_apontamento_solda['qt_planejada'] = itens_apontamento_solda['Qtd prod']
     itens_apontamento_solda['qt_apontada'] = itens_apontamento_solda['Qtd prod']
 
-    itens_apontamento_solda['data_carga'] = pd.to_datetime(itens_apontamento_solda['data_carga'],dayfirst=True)
-    itens_apontamento_solda['data_inicio'] = pd.to_datetime(itens_apontamento_solda['data_inicio'],dayfirst=True)
-    itens_apontamento_solda['data_fim_tratada'] = pd.to_datetime(itens_apontamento_solda['data_fim_tratada'],dayfirst=True)
+
+    itens_apontamento_solda['data_inicio'] = itens_apontamento_solda['data_inicio'].apply(parse_data_condicional)
+    itens_apontamento_solda['data_fim_tratada'] = itens_apontamento_solda['data_fim_tratada'].apply(parse_data_condicional)
+    itens_apontamento_solda['data_carga'] = itens_apontamento_solda['data_carga'].apply(parse_data_condicional)
+    # itens_apontamento_solda['data_carga'] = pd.to_datetime(itens_apontamento_solda['data_carga'],dayfirst=True)
+    # itens_apontamento_solda['data_inicio'] = pd.to_datetime(itens_apontamento_solda['data_inicio'],dayfirst=True)
+    # itens_apontamento_solda['data_fim_tratada'] = pd.to_datetime(itens_apontamento_solda['data_fim_tratada'],dayfirst=True)
+
+    # print("Datas fim inválidas em montagem:")
+    # print(itens_tempos_montagem.loc[itens_tempos_montagem['data_fim_tratada'].isna(), 'data_fim_tratada'])
+    # print(itens_tempos_montagem.loc[itens_tempos_montagem['data_fim_tratada'].isna(), 'data_fim_tratada'].index)
+
+    # print("Valores originais:")
+    # print(itens_tempos_montagem.loc[itens_tempos_montagem['data_fim_tratada'].isna(), 'data_fim_tratada'])
+
+    # print("\nDatas fim inválidas em pintura:")
+    # print(itens_pintura.loc[itens_pintura['data_fim_tratada'].isna(), 'data_fim_tratada'])
+    # print(itens_pintura.loc[itens_pintura['data_fim_tratada'].isna(), 'data_fim_tratada'].index)
+
+    # print("Valores originais:")
+    # print(itens_pintura.loc[itens_pintura['data_fim_tratada'].isna(), 'data_fim_tratada'])
 
     itens_apontamento_solda = itens_apontamento_solda[['codigo','data_inicio','data_fim_tratada','data_carga','qt_planejada','qt_apontada']]
 
@@ -316,6 +361,21 @@ def definir_leadtime(conjuntos):
         'data_fim_tratada': 'last',
         'qt_apontada': 'last',
     })
+  
+    # print(primeira_aparicao.head())
+    # print(primeira_aparicao.tail())
+    # print(primeira_aparicao.sample(5))
+    # print(primeira_aparicao.shape)
+    # print(primeira_aparicao.columns)
+    # print(primeira_aparicao.info())
+
+    # print("--------------------------")
+    # print(ultima_aparicao.head())
+    # print(ultima_aparicao.tail())
+    # print(ultima_aparicao.sample(5))
+    # print(ultima_aparicao.shape)
+    # print(ultima_aparicao.columns)
+    # print(ultima_aparicao.info())
 
     # PEGANDO OS CODIGOS QUE CONTEM ZERO E ESTABELECENDO OUTRA COLUNA
     conjuntos['CODIG'] = conjuntos['COD'].str.lstrip('0')
@@ -461,8 +521,8 @@ def definir_leadtime(conjuntos):
 
     condicoes_status = [
         (df_transformado['data_inicio'].isna()) & (df_transformado['ETAPA'] != 'SOLDA'),
-        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] > df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] != 'SOLDA'),
-        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] != 'SOLDA') & (df_transformado['qt_planejada'] > 0)
+        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['qt_planejada'] >= df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] != 'SOLDA'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] != 'SOLDA') & (df_transformado['qt_planejada'] > 0)
     ]
 
     condicoes_status_solda = [

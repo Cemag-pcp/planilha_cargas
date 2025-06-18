@@ -201,6 +201,7 @@ def atualizacao_diaria(tentativa_extra=False):
         df_unificado = unificar_planilhas(data_atual, data_final, data_inicio_busca)
 
         df_unificado.to_excel(caminho, index=False)
+        print(caminho)
 
         # Prepara JSON de resposta
         plan_json = df_unificado.to_dict(orient='records')
