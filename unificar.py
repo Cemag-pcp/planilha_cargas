@@ -34,7 +34,9 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
         planilha_unificada = pd.concat(todas_planilhas, ignore_index=True)
         
         # Remove duplicatas, mantendo apenas as linhas com status 'Finalizada'
-        # planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
+        planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
+        planilha_unificada_finalizadas = planilha_unificada_finalizadas.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
+
         planilha_unificada = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
         # planilha_unificada_finalizadas = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
         #Modificando a coluna 'Data' para a data de hoje
@@ -44,7 +46,7 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
 
 
         # Juntar as planilhas unificadas com a planilha de hoje
-        planilha_unificada_final = pd.concat([planilha_unificada,planilha_de_hoje], ignore_index=True)
+        planilha_unificada_final = pd.concat([planilha_unificada,planilha_de_hoje,planilha_unificada_finalizadas], ignore_index=True)
 
         planilha_unificada_final = planilha_unificada_final.sort_values(by='OPCIONAL 2')
         planilha_unificada_final['OPCIONAL 2'] = planilha_unificada_final['OPCIONAL 2'].dt.strftime('%d/%m/%Y')
