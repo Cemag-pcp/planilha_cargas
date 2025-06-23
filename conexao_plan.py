@@ -9,6 +9,8 @@ import os
 
 def busca_cargas(data_inicio,data_final):
 
+    #Nessa função vou ter retorno de todas as carretas e a quantidade que foram filtradas com o intervalo de datas proposto
+
     # url = "https://cemagprod.onrender.com/api/publica/apontamento/tempo-processo-montagem"
 
     # response = requests.get(url)
@@ -51,16 +53,16 @@ def busca_cargas(data_inicio,data_final):
     itens['PED_QUANTIDADE'] = pd.to_numeric(itens['PED_QUANTIDADE'].str.replace(',','.'))
     
     # Agrupando pela Data e pelo Codigo Carreta
-    itens = itens.groupby(['PED_PREVISAOEMISSAODOC','PED_RECURSO.CODIGO','Carga'],as_index=False).sum()
-
-    # print('itens-------')
-    # print(itens)
 
     # Filtrando o DataFrame para pegar as linhas dentro do intervalo de datas
     itens_filtrados = itens[(itens['PED_PREVISAOEMISSAODOC'] >= data_inicio) & (itens['PED_PREVISAOEMISSAODOC'] <= data_final)]
+
+    itens_filtrados = itens_filtrados.groupby(['PED_RECURSO.CODIGO','PED_PREVISAOEMISSAODOC','Carga']).agg({
+            'PED_QUANTIDADE': 'sum'
+        }).reset_index()
+    
     print('itens-------')
     print(itens_filtrados)
-    # print(itens_filtrados)
 
     #Desconsiderar os códigos de cores VJ, VM, AN, LC, LJ, AM
     codigos_desconsiderados = ['VJ', 'VM', 'AN', 'LC', 'LJ', 'AM']
@@ -76,6 +78,7 @@ def busca_cargas(data_inicio,data_final):
     return itens_filtrados
 
 def conectar_com_base(cargas_filtradas):
+    #Nessa função vou ter retorno de tudo (com as quantidades) o que é preciso pra fazer todas as carretas que foram filtradas entre a o intervalo de datas proposto
 
     #Configuração inicial
     service_account_info = ["GOOGLE_SERVICE_ACCOUNT"]
@@ -99,8 +102,7 @@ def conectar_com_base(cargas_filtradas):
 
     itens = pd.DataFrame(list1)
     itens.columns = itens.iloc[0]
-    itens = itens.drop(index=0)
-
+    itens = itens.drop(index=0) 
     
     itens = pd.merge(cargas_filtradas,itens,left_on='PED_RECURSO.CODIGO',right_on='carreta',how='left')
 
@@ -116,7 +118,6 @@ def conectar_com_base(cargas_filtradas):
     itens['QTD_ORIGINAL'] = itens['PED_QUANTIDADE'] * itens['TOTAL']
 
     colunas_desejadas = ['PED_PREVISAOEMISSAODOC','carreta','DESCRICAO','QTD','QTD_ORIGINAL','COD','Carga']
-
 
     conjuntos_filtrados = itens[colunas_desejadas]
 
@@ -521,7 +522,7 @@ def definir_leadtime(conjuntos):
 
     condicoes_status = [
         (df_transformado['data_inicio'].isna()) & (df_transformado['ETAPA'] != 'SOLDA'),
-        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['qt_planejada'] >= df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] != 'SOLDA'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['qt_planejada'] > df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] != 'SOLDA'),
         (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] != 'SOLDA') & (df_transformado['qt_planejada'] > 0)
     ]
 

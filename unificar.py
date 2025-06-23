@@ -33,8 +33,8 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
         planilha_unificada = pd.concat(todas_planilhas, ignore_index=True)
         
         # Remove duplicatas, mantendo apenas as linhas com status 'Finalizada'
-        planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
-        planilha_unificada_finalizadas = planilha_unificada_finalizadas.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7'])
+        # planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
+        planilha_unificada_finalizadas = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
         #Modificando a coluna 'Data' para a data de hoje
         planilha_unificada_finalizadas['Data'] = datetime.today().strftime('%d/%m/%Y')
 
