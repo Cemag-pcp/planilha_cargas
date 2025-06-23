@@ -201,7 +201,7 @@ def atualizacao_diaria(tentativa_extra=False):
         df_unificado = unificar_planilhas(data_atual, data_final, data_inicio_busca)
 
         df_unificado.to_excel(caminho, index=False)
-        print(caminho)
+        print(f'Planilhas unificadas com sucesso! Caminho: {caminho}')
 
         # Prepara JSON de resposta
         plan_json = df_unificado.to_dict(orient='records')
@@ -249,7 +249,7 @@ def agendar_atualizacao():
     while True:
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
-        time.sleep(3)
+        time.sleep(300)
         if (datetime.now().hour == 9 and datetime.now().minute >= 40) or datetime.now().hour == 20 and datetime.now().minute >= 40:
             print(jobs)
 
