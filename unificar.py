@@ -5,14 +5,14 @@ from datetime import datetime
 def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
     # Caminho da pasta com os arquivos Excel
     print('Unificando planilhas...')
-    pasta = "atualizacao-diaria/"  # <- Altere esse caminho
+    pasta = "atualizacao-diaria/arquivos-individuais/"  # <- Altere esse caminho
     # Gera nome único para o arquivo
     # nome_arquivo = f"planilha_unificada_{data_atual_arquivo}.xlsx"
     # os.makedirs('atualizacao-diaria/unificadas', exist_ok=True)
     # caminho = os.path.join("atualizacao-diaria/unificadas", nome_arquivo)
     # print(caminho)
 
-    try:
+    try:   
 
         # Lista para armazenar os DataFrames
         todas_planilhas = []
@@ -23,6 +23,8 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
                 caminho_arquivo = os.path.join(pasta, arquivo)
                 df = pd.read_excel(caminho_arquivo)  # Lê a primeira aba
                 df['OPCIONAL 2'] = pd.to_datetime(df['OPCIONAL 2'], dayfirst=True, errors='coerce')
+                #Solução temporária para o recurso vazio para os arquivos 
+                df['Recurso'] = df.apply(preencher_recurso, axis=1)
                 data_limite = pd.Timestamp(data_final)
                 df = df[df['OPCIONAL 2'] <= data_limite]           
                 # df['Arquivo_Origem'] = arquivo  # (opcional) adiciona coluna com nome do arquivo de origem
@@ -37,17 +39,15 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
         planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
         planilha_unificada_finalizadas = planilha_unificada_finalizadas.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
 
-        planilha_unificada = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
+        # planilha_unificada = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
         # planilha_unificada_finalizadas = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
-        
+
         #Modificando a coluna 'Data' do que está finalizado para a data de hoje para a data de hoje
         planilha_unificada_finalizadas['Data'] = datetime.today().strftime('%d/%m/%Y')
 
 
-
-
         # Juntar as planilhas unificadas com a planilha de hoje
-        planilha_unificada_final = pd.concat([planilha_unificada,planilha_de_hoje,planilha_unificada_finalizadas], ignore_index=True)
+        planilha_unificada_final = pd.concat([planilha_de_hoje,planilha_unificada_finalizadas], ignore_index=True)
 
         planilha_unificada_final = planilha_unificada_final.sort_values(by='OPCIONAL 2')
         planilha_unificada_final['OPCIONAL 2'] = planilha_unificada_final['OPCIONAL 2'].dt.strftime('%d/%m/%Y')
@@ -69,6 +69,24 @@ def verifica_data_arquivo(nome_arquivo, data_limite):
     
     # Faz a comparação
     return data_arquivo >= data_limite
+
+def preencher_recurso(row):
+
+    alguns_codigos_vazios = [
+        ('030389', 'CONJ INTERMED'),
+        ('30389', 'CONJ INTERMED'),
+        ('450133', 'CONJ INTERMED'),
+    ]
+
+    codigos_dict = dict(alguns_codigos_vazios)
+
+    produto_str = str(row['Produto'])
+    recurso_str = str(row['Recurso'])
+    
+    if (recurso_str == '' or recurso_str is None) and produto_str in codigos_dict:
+        return codigos_dict[produto_str]
+    else:
+        return row['Recurso']
 
 # Exemplo de uso
 # nome_arquivo = "cargas_2025-04-30.xlsx"

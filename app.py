@@ -190,11 +190,17 @@ def atualizacao_diaria(tentativa_extra=False):
         # Gera nome único para o arquivo
         nome_arquivo = f"cargas_{data_atual_arquivo}.xlsx"
         os.makedirs('atualizacao-diaria', exist_ok=True)
+        os.makedirs('atualizacao-diaria/arquivos-individuais', exist_ok=True)
         caminho = os.path.join("atualizacao-diaria", nome_arquivo)  # pasta "tmp" deve existir
+        caminho_backup = os.path.join("atualizacao-diaria/arquivos-individuais", nome_arquivo)
         print(caminho)
+        print(caminho_backup)
 
         # Salva o DataFrame como Excel em disco
-        planilha_final.to_excel(caminho, index=False)
+        # planilha_final.to_excel(caminho, index=False)
+
+        # Salva o DF em uma pasta so com os arquivos individuais
+        planilha_final.to_excel(caminho_backup, index=False)
 
         time.sleep(5)  # Aguarda 5 segundos para garantir que o arquivo foi salvo
         # Junta as planilhas unificadas
@@ -243,7 +249,7 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
 
 def agendar_atualizacao():
     print('agendar_atualizacao()')
-    schedule.every().day.at("06:30").do(atualizacao_diaria)
+    schedule.every().day.at("16:12").do(atualizacao_diaria)
     schedule.every().day.at("18:30").do(atualizacao_diaria)
 
     while True:
