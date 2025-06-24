@@ -39,8 +39,9 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
 
         planilha_unificada = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
         # planilha_unificada_finalizadas = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
-        #Modificando a coluna 'Data' para a data de hoje
-        planilha_unificada['Data'] = datetime.today().strftime('%d/%m/%Y')
+        
+        #Modificando a coluna 'Data' do que está finalizado para a data de hoje para a data de hoje
+        planilha_unificada_finalizadas['Data'] = datetime.today().strftime('%d/%m/%Y')
 
 
 
