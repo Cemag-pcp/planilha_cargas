@@ -549,10 +549,16 @@ def definir_leadtime(conjuntos):
     df_transformado['qt_planejada'] = pd.to_numeric(df_transformado['qt_planejada'],errors='coerce').fillna(0)
     df_transformado['qt_apontada'] = pd.to_numeric(df_transformado['qt_apontada'],errors='coerce').fillna(0)
 
-    condicoes_status = [
-        (df_transformado['data_inicio'].isna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['ETAPA'] != 'SOLDA'),
-        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['qt_planejada'] > df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] != 'SOLDA'),
-        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] != 'SOLDA') & (df_transformado['qt_planejada'] > 0)
+    condicoes_status_montagem = [
+        (df_transformado['data_inicio'].isna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['ETAPA'] == 'MONTAGEM'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] > df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'MONTAGEM'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] == 'MONTAGEM') & (df_transformado['qt_planejada'] > 0)
+    ]
+
+    condicoes_status_pintura = [
+        (df_transformado['data_inicio'].isna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['ETAPA'] == 'PINTURA'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] >= df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] == 'PINTURA') & (df_transformado['qt_planejada'] > 0)
     ]
 
     condicoes_status_solda = [
@@ -630,10 +636,16 @@ def definir_leadtime(conjuntos):
     df_transformado['Grupo'] = df_transformado['subgrupo']
     df_transformado['SubGrupo'] = df_transformado['subgrupo']
     # df_transformado['Status'] = np.select(condicoes_status,valores_status,default='') if df_transformado['ETAPA'] != 'SOLDA' else np.select(condicoes_status_solda,valores_status,default='')
-    # Primeiro aplica para quem NÃO é SOLDA
-    mask_nao_solda = df_transformado['ETAPA'] != 'SOLDA'
-    df_transformado.loc[mask_nao_solda, 'Status'] = np.select(
-        condicoes_status, valores_status, default='')[mask_nao_solda]
+    # Primeiro aplica para quem é MONTAGEM
+    mask_montagem = df_transformado['ETAPA'] == 'MONTAGEM'
+    df_transformado.loc[mask_montagem, 'Status'] = np.select(
+        condicoes_status_montagem, valores_status, default='')[mask_montagem]
+    
+    # Depois aplica para quem É PINTURA
+    mask_pintura = df_transformado['ETAPA'] == 'PINTURA'
+    df_transformado.loc[mask_pintura, 'Status'] = np.select(
+        condicoes_status_pintura, valores_status, default='')[mask_pintura]
+
     # Depois aplica para quem É SOLDA
     mask_solda = df_transformado['ETAPA'] == 'SOLDA'
     df_transformado.loc[mask_solda, 'Status'] = np.select(
