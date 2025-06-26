@@ -34,6 +34,7 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
         planilha_de_hoje = todas_planilhas.pop()
         # Junta todos os DataFrames menos o de hoje
         if len(todas_planilhas) == 0:
+            planilha_de_hoje['OPCIONAL 2'] = planilha_de_hoje['OPCIONAL 2'].dt.strftime('%d/%m/%Y')
             return planilha_de_hoje
         
         planilha_unificada = pd.concat(todas_planilhas, ignore_index=True)
