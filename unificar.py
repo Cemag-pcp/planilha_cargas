@@ -33,6 +33,9 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
         # Pega a planilha de hoje, que é a última da lista e remove ela da lista
         planilha_de_hoje = todas_planilhas.pop()
         # Junta todos os DataFrames menos o de hoje
+        if len(todas_planilhas) == 0:
+            return planilha_de_hoje
+        
         planilha_unificada = pd.concat(todas_planilhas, ignore_index=True)
         
         # Remove duplicatas, mantendo apenas as linhas com status 'Finalizada'
@@ -57,7 +60,7 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
         return planilha_unificada_final
     except Exception as e:
         print(f"❌ Erro ao unificar planilhas: {e}")
-        return None
+        return planilha_de_hoje
 
 
 def verifica_data_arquivo(nome_arquivo, data_limite):
