@@ -624,8 +624,8 @@ def definir_leadtime(conjuntos):
         + df_transformado['Carga'].str.replace(' ', '')
     )
     df_transformado['Produto'] = df_transformado['COD']
-    df_transformado['Cor'] = ''
-    df_transformado['Tamanho'] = ""
+    df_transformado['Cor'] = "UNICO"
+    df_transformado['Tamanho'] = "UNICO"
     df_transformado['Descrição do Produto'] = df_transformado['DESCRICAO']
     df_transformado['Quantidade'] = df_transformado['QTD']
     df_transformado['Quantidade_Original'] = df_transformado['QTD_ORIGINAL']
@@ -651,7 +651,7 @@ def definir_leadtime(conjuntos):
     df_transformado.loc[mask_solda, 'Status'] = np.select(
         condicoes_status_solda, valores_status, default='')[mask_solda]
     
-    df_transformado['Data de Emissão'] = ''
+    df_transformado['Data de Emissão'] = pd.Timestamp('1900-01-01').strftime('%d/%m/%Y')
     df_transformado['Data de Liberação'] = df_transformado['data_inicio'].dt.strftime('%d/%m/%Y')
     df_transformado['Data de Entrega'] = np.select(condicoes_data_entrega,valores_data_entrega,default='')
     df_transformado['Data de Encerramento'] = np.where(
@@ -659,7 +659,7 @@ def definir_leadtime(conjuntos):
         df_transformado['data_fim_tratada'],
         ''
     )
-    df_transformado['Valor Unitário'] = ''
+    df_transformado['Valor Unitário'] = 1
     df_transformado['OPCIONAL 1'] = (df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1)).dt.strftime('%d/%m/%Y')
     df_transformado['OPCIONAL 2'] = df_transformado['PED_PREVISAOEMISSAODOC'].dt.strftime('%d/%m/%Y')
     df_transformado['OPCIONAL 3'] = df_transformado['montagem']
