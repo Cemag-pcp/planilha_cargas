@@ -80,10 +80,11 @@ def preencher_recurso(row):
 
     codigos_dict = dict(alguns_codigos_vazios)
 
-    produto_str = str(row['Produto'])
-    recurso_str = str(row['Recurso'])
+
+    produto_str = str(row['Produto']) if pd.notna(row['Produto']) else ''
+    recurso_str = str(row['Recurso']) if pd.notna(row['Recurso']) else ''
     
-    if (recurso_str == '' or recurso_str is None) and produto_str in codigos_dict:
+    if recurso_str.strip() == '' and produto_str in codigos_dict:
         return codigos_dict[produto_str]
     else:
         return row['Recurso']
