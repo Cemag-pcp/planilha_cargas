@@ -352,7 +352,7 @@ def definir_leadtime(conjuntos):
 
     primeira_aparicao_montagem = (
         itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] != 'finalizada')]
-        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'data_inicio': 'first',
             'qt_planejada': 'first'
@@ -361,7 +361,7 @@ def definir_leadtime(conjuntos):
 
     primeira_aparicao_pintura = (
         itens_tempos[(itens_tempos['etapa'] == 'pintura')]
-        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'data_inicio': 'first',
             'qt_planejada': 'first'
@@ -386,7 +386,7 @@ def definir_leadtime(conjuntos):
 
     montagem_finalizado = (
         itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] == 'finalizada')]
-        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'qt_apontada': 'sum',
             'data_fim_tratada': 'last'
@@ -396,7 +396,7 @@ def definir_leadtime(conjuntos):
     # Para outros casos → pega o último valor normalmente
     pintura = (
         itens_tempos[itens_tempos['etapa'] == 'pintura']
-        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'qt_apontada': 'sum',
             'data_fim_tratada': 'last'
