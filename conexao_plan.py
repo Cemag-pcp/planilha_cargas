@@ -6,6 +6,7 @@ from pandas.tseries.offsets import BDay
 import numpy as np
 import requests
 import os
+import time
 
 def busca_cargas(data_inicio,data_final):
 
@@ -45,7 +46,6 @@ def busca_cargas(data_inicio,data_final):
     itens.columns = itens.iloc[0]
     itens = itens.drop(index=0)
 
-    itens = itens.drop_duplicates()
 
     #Pegando somente as colunas de interesse
     itens = itens[['PED_PREVISAOEMISSAODOC','PED_RECURSO.CODIGO','PED_QUANTIDADE','Carga']]
@@ -71,7 +71,7 @@ def busca_cargas(data_inicio,data_final):
 
     # itens_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\cargas_filtradas.xlsx',index=False)
     #Desconsiderar os códigos de cores VJ, VM, AN, LC, LJ, AM
-    codigos_desconsiderados = ['VJ', 'VM', 'AN', 'LC', 'LJ', 'AM']
+    codigos_desconsiderados = ['VJ', 'VM', 'AN', 'LC', 'LJ', 'AM','AV']
 
     # Criando o padrão regex para corresponder a qualquer um desses códigos no final da string
     padrao = r'(' + '|'.join(codigos_desconsiderados) + r')$'
@@ -80,6 +80,8 @@ def busca_cargas(data_inicio,data_final):
     itens_filtrados.loc[:, 'PED_RECURSO.CODIGO'] = itens_filtrados['PED_RECURSO.CODIGO'].str.replace(padrao, '', regex=True)
     # Removendo espaços que ficaram
     itens_filtrados['PED_RECURSO.CODIGO'] = itens_filtrados['PED_RECURSO.CODIGO'].str.strip()
+
+    itens_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\cargas_filtradas.xlsx',index=False)
 
     return itens_filtrados
 
@@ -108,7 +110,9 @@ def conectar_com_base(cargas_filtradas):
 
     itens = pd.DataFrame(list1)
     itens.columns = itens.iloc[0]
-    itens = itens.drop(index=0) 
+    itens = itens.drop(index=0)
+
+    itens = itens.drop_duplicates()
     
     itens = pd.merge(cargas_filtradas,itens,left_on='PED_RECURSO.CODIGO',right_on='carreta',how='left')
 
@@ -128,7 +132,7 @@ def conectar_com_base(cargas_filtradas):
 
     conjuntos_filtrados = itens[colunas_desejadas]
 
-    # conjuntos_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_filtrados.xlsx',index=False)
+    conjuntos_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_filtrados.xlsx',index=False)
     #Colunas Finais: Código, Descrição, quantidade de conjunto, data da carga
     return conjuntos_filtrados
 
@@ -217,6 +221,8 @@ def calcular_cor(row):
 def definir_leadtime(conjuntos):
 
     print(conjuntos)
+
+    time.sleep(1)
 
     if conjuntos.empty:
         return conjuntos
@@ -346,7 +352,7 @@ def definir_leadtime(conjuntos):
 
     primeira_aparicao_montagem = (
         itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] != 'finalizada')]
-        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'data_inicio': 'first',
             'qt_planejada': 'first'
@@ -355,7 +361,7 @@ def definir_leadtime(conjuntos):
 
     primeira_aparicao_pintura = (
         itens_tempos[(itens_tempos['etapa'] == 'pintura')]
-        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'data_inicio': 'first',
             'qt_planejada': 'first'
@@ -380,7 +386,7 @@ def definir_leadtime(conjuntos):
 
     montagem_finalizado = (
         itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] == 'finalizada')]
-        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'qt_apontada': 'sum',
             'data_fim_tratada': 'last'
@@ -390,7 +396,7 @@ def definir_leadtime(conjuntos):
     # Para outros casos → pega o último valor normalmente
     pintura = (
         itens_tempos[itens_tempos['etapa'] == 'pintura']
-        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'qt_apontada': 'sum',
             'data_fim_tratada': 'last'
