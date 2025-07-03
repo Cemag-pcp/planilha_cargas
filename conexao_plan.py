@@ -352,7 +352,7 @@ def definir_leadtime(conjuntos):
 
     primeira_aparicao_montagem = (
         itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] != 'finalizada')]
-        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'data_inicio': 'first',
             'qt_planejada': 'first'
@@ -361,7 +361,7 @@ def definir_leadtime(conjuntos):
 
     primeira_aparicao_pintura = (
         itens_tempos[(itens_tempos['etapa'] == 'pintura')]
-        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'data_inicio': 'first',
             'qt_planejada': 'first'
@@ -386,7 +386,7 @@ def definir_leadtime(conjuntos):
 
     montagem_finalizado = (
         itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] == 'finalizada')]
-        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'qt_apontada': 'sum',
             'data_fim_tratada': 'last'
@@ -396,7 +396,7 @@ def definir_leadtime(conjuntos):
     # Para outros casos → pega o último valor normalmente
     pintura = (
         itens_tempos[itens_tempos['etapa'] == 'pintura']
-        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'qt_apontada': 'sum',
             'data_fim_tratada': 'last'
@@ -620,8 +620,8 @@ def definir_leadtime(conjuntos):
 
     condicoes_status_pintura = [
         (df_transformado['data_inicio'].isna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['ETAPA'] == 'PINTURA'),
-        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
-        # (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] >= df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
+        # (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] >= df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
         (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] == 'PINTURA') & (df_transformado['qt_planejada'] > 0)
     ]
 
