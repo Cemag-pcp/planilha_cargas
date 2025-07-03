@@ -45,6 +45,8 @@ def busca_cargas(data_inicio,data_final):
     itens.columns = itens.iloc[0]
     itens = itens.drop(index=0)
 
+    itens = itens.drop_duplicates()
+
     #Pegando somente as colunas de interesse
     itens = itens[['PED_PREVISAOEMISSAODOC','PED_RECURSO.CODIGO','PED_QUANTIDADE','Carga']]
     itens.replace("", np.nan, inplace=True)  # Substitui string vazia por NaN
@@ -57,6 +59,9 @@ def busca_cargas(data_inicio,data_final):
     # Filtrando o DataFrame para pegar as linhas dentro do intervalo de datas
     itens_filtrados = itens[(itens['PED_PREVISAOEMISSAODOC'] >= data_inicio) & (itens['PED_PREVISAOEMISSAODOC'] <= data_final)]
 
+    itens_filtrados['PED_RECURSO.CODIGO'] = itens_filtrados['PED_RECURSO.CODIGO'].str.upper()
+    itens_filtrados['Carga'] = itens_filtrados['Carga'].str.upper()
+
     itens_filtrados = itens_filtrados.groupby(['PED_RECURSO.CODIGO','PED_PREVISAOEMISSAODOC','Carga']).agg({
             'PED_QUANTIDADE': 'sum'
         }).reset_index()
@@ -64,6 +69,7 @@ def busca_cargas(data_inicio,data_final):
     print('itens-------')
     print(itens_filtrados)
 
+    # itens_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\cargas_filtradas.xlsx',index=False)
     #Desconsiderar os códigos de cores VJ, VM, AN, LC, LJ, AM
     codigos_desconsiderados = ['VJ', 'VM', 'AN', 'LC', 'LJ', 'AM']
 
@@ -116,11 +122,13 @@ def conectar_com_base(cargas_filtradas):
     itens['TOTAL'] = pd.to_numeric(itens['TOTAL'])
     itens['QTD'] = itens['PED_QUANTIDADE'] * itens['TOTAL']
     itens['QTD_ORIGINAL'] = itens['PED_QUANTIDADE'] * itens['TOTAL']
+    
 
     colunas_desejadas = ['PED_PREVISAOEMISSAODOC','carreta','DESCRICAO','QTD','QTD_ORIGINAL','COD','Carga']
 
     conjuntos_filtrados = itens[colunas_desejadas]
 
+    # conjuntos_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_filtrados.xlsx',index=False)
     #Colunas Finais: Código, Descrição, quantidade de conjunto, data da carga
     return conjuntos_filtrados
 
@@ -333,13 +341,37 @@ def definir_leadtime(conjuntos):
     # itens_tempos = pd.concat([itens_tempos_montagem,itens_pintura])
     itens_tempos = pd.concat([itens_tempos_montagem,itens_pintura,itens_apontamento_solda])
     
+    itens_tempos['codigo'] = itens_tempos['codigo'].str.lstrip('0')
     # 1. Obter a primeira ocorrência de cada carga → para data_liberacao
-    primeira_aparicao = itens_tempos.groupby(['codigo','data_carga','etapa'], as_index=False).agg({
-        'data_inicio': 'first',
-        'qt_planejada': 'first',
-    })
 
-    primeira_aparicao['codigo'] = primeira_aparicao['codigo'].str.lstrip('0')
+    primeira_aparicao_montagem = (
+        itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] != 'finalizada')]
+        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .agg({
+            'data_inicio': 'first',
+            'qt_planejada': 'first'
+        })
+    )
+
+    primeira_aparicao_pintura = (
+        itens_tempos[(itens_tempos['etapa'] == 'pintura')]
+        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
+        .agg({
+            'data_inicio': 'first',
+            'qt_planejada': 'first'
+        })
+    )
+
+    primeira_aparicao_solda = (
+        itens_tempos[(itens_tempos['etapa'] == 'solda')]
+        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
+        .agg({
+            'data_inicio': 'first',
+            'qt_planejada': 'first'
+        })
+    )
+
+
 
     # 2. Obter a última ocorrência de cada carga → para data_entrega
     # Para etapa = montagem e status = finalizado → soma qt_apontada
@@ -348,7 +380,7 @@ def definir_leadtime(conjuntos):
 
     montagem_finalizado = (
         itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] == 'finalizada')]
-        .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
+        .groupby(['id','codigo', 'data_carga', 'etapa'], as_index=False)
         .agg({
             'qt_apontada': 'sum',
             'data_fim_tratada': 'last'
@@ -373,11 +405,21 @@ def definir_leadtime(conjuntos):
             'data_fim_tratada': 'last'
         })
     )
+    
+    primeira_aparicao_montagem = primeira_aparicao_montagem[['codigo','data_carga','etapa','qt_planejada','data_inicio']]
+    primeira_aparicao_pintura = primeira_aparicao_pintura[['codigo','data_carga','etapa','qt_planejada','data_inicio']]
 
     pintura = pintura[['codigo','data_carga','etapa','qt_apontada','data_fim_tratada']]
+    montagem_finalizado = montagem_finalizado[['codigo','data_carga','etapa','qt_apontada','data_fim_tratada']]
+
+    
 
     montagem_finalizado['codigo'] = montagem_finalizado['codigo'].str.lstrip('0')
-    print(montagem_finalizado)
+
+    primeira_aparicao = pd.concat([primeira_aparicao_montagem, primeira_aparicao_pintura, primeira_aparicao_solda], ignore_index=True)
+
+    # primeira_aparicao.to_excel(r'C:\Users\TIDEV\Desktop\primeira_aparicao.xlsx',index=False)
+    # pintura.to_excel(r'C:\Users\TIDEV\Desktop\pintura_tempos.xlsx',index=False)
 
     ultima_aparicao = pd.concat([montagem_finalizado, pintura, solda], ignore_index=True)
   
@@ -399,9 +441,19 @@ def definir_leadtime(conjuntos):
     # PEGANDO OS CODIGOS QUE CONTEM ZERO E ESTABELECENDO OUTRA COLUNA
     conjuntos['CODIG'] = conjuntos['COD'].str.lstrip('0')
 
+
     # 3. Juntar com a tabela A
     df_resultado = pd.merge(conjuntos, primeira_aparicao, left_on=['CODIG','PED_PREVISAOEMISSAODOC'], right_on=['codigo','data_carga'], how='left')
+
+    # df_resultado['qt_planejada'] = pd.to_numeric(df_resultado['qt_planejada'],errors='coerce').fillna(0)
+    # df_transformado['qt_apontada'] = pd.to_numeric(df_transformado['qt_apontada'],errors='coerce').fillna(0)
+    
+    # df_resultado = df_resultado.drop_duplicates(subset=['carreta', 'COD', 'data_carga', 'etapa'], keep='first')
+    
+
+    # df_resultado.to_excel(r'C:\Users\TIDEV\Desktop\df_resultado.xlsx',index=False)
     conjuntos_tempos = pd.merge(df_resultado, ultima_aparicao, left_on=['CODIG','PED_PREVISAOEMISSAODOC'], right_on=['codigo','data_carga'], how='left')
+    # conjuntos_tempos.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_tempos.xlsx',index=False)
 
 
     # PLANILHA APONTAMENTO MONTAGEM
@@ -418,14 +470,17 @@ def definir_leadtime(conjuntos):
         itens_montagem['Célula'].notna() & (itens_montagem['Célula'] != '') &
         itens_montagem['Código'].notna() & (itens_montagem['Código'] != '')
     ]
-    itens_montagem = itens_montagem.groupby(['Código','Célula'],as_index=False).first().reset_index()
+    itens_montagem = itens_montagem.groupby(['Código'],as_index=False).last().reset_index()
 
+    # itens_montagem.to_excel(r'C:\Users\TIDEV\Desktop\celulas_montagem.xlsx',index=False)
     # print(itens_montagem)
 
     # itens_montagem.to_excel('itens_montagem.xlsx', index=False)
 
 
     conjuntos_tempos_montagem = pd.merge(conjuntos_tempos,itens_montagem,left_on='COD',right_on='Código',how='inner')
+
+    # conjuntos_tempos_montagem.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_tempos_montagem.xlsx',index=False)
 
 
 
@@ -451,6 +506,8 @@ def definir_leadtime(conjuntos):
     # print(itens)
     codigo_anterior = ''
     setores_adicionados = []
+
+    # itens.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_itens.xlsx',index=False)
 
     itens.reset_index(drop=True, inplace=True)
 
@@ -557,7 +614,8 @@ def definir_leadtime(conjuntos):
 
     condicoes_status_pintura = [
         (df_transformado['data_inicio'].isna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['ETAPA'] == 'PINTURA'),
-        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] >= df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
+        (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
+        # (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] >= df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
         (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] == 'PINTURA') & (df_transformado['qt_planejada'] > 0)
     ]
 
