@@ -81,7 +81,7 @@ def busca_cargas(data_inicio,data_final):
     # Removendo espaços que ficaram
     itens_filtrados['PED_RECURSO.CODIGO'] = itens_filtrados['PED_RECURSO.CODIGO'].str.strip()
 
-    itens_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\cargas_filtradas.xlsx',index=False)
+    # itens_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\cargas_filtradas.xlsx',index=False)
 
     return itens_filtrados
 
@@ -132,7 +132,7 @@ def conectar_com_base(cargas_filtradas):
 
     conjuntos_filtrados = itens[colunas_desejadas]
 
-    conjuntos_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_filtrados.xlsx',index=False)
+    # conjuntos_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_filtrados.xlsx',index=False)
     #Colunas Finais: Código, Descrição, quantidade de conjunto, data da carga
     return conjuntos_filtrados
 
