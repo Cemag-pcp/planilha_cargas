@@ -16,7 +16,7 @@ import threading
 from functools import partial
 
 # 3. Imports locais
-from conexao_plan import busca_cargas, conectar_com_base, definir_leadtime, base_levantamento_pecas
+from conexao_plan import busca_cargas, conectar_com_base, definir_leadtime
 from unificar import unificar_planilhas
 
 
@@ -41,14 +41,8 @@ def processar():
     cargas = busca_cargas(data_inicio, data_final)
     conjuntos_filtrados = conectar_com_base(cargas)
     planilha_final = definir_leadtime(conjuntos_filtrados)
-    
-    try:
-        planilha_final_pecas = base_levantamento_pecas(planilha_final)
-    except requests.exceptions.ConnectTimeout:
-        print("❌ Conexão com o Google Sheets expirou. Verifique sua internet ou VPN.")
-        return Response({"erro": "Conexão com o Google Sheets expirou. Verifique sua internet ou VPN."}), 504
 
-    if planilha_final_pecas.empty:
+    if planilha_final.empty:
         return Response(json.dumps({'dados': []}), content_type='application/json', status=400)
 
     # Gera nome único para o arquivo
@@ -58,7 +52,7 @@ def processar():
 
 
     # Salva o DataFrame como Excel em disco
-    planilha_final_pecas.to_excel(caminho, index=False)
+    planilha_final.to_excel(caminho, index=False)
 
     # Agrupando o df para gerar o gráfico
 
@@ -107,7 +101,7 @@ def processar():
 
 
     # Prepara JSON de resposta
-    plan_json = planilha_final_pecas.to_dict(orient='records')
+    plan_json = planilha_final.to_dict(orient='records')
     json_data = json.dumps({'dados': plan_json, 
                             'arquivo': nome_arquivo,
                             }, ensure_ascii=False, indent=4)
@@ -128,10 +122,16 @@ def exportar_excel(nome_arquivo):
         download_name='cargas_exportadas.xlsx'
     )
 
+# Flag de controle
+executou_630 = False
+executou_1830 = False
+
 def atualizacao_diaria(tentativa_extra=False):
+    global executou_630, executou_1830
     try:
         print("Executando a atualização diária")
         
+        fuso = ZoneInfo("America/Sao_Paulo")
         data_atual = date.today()
         data_atual_arquivo = data_atual
         # caminho_arquivo = os.path.join("atualizacao-diaria", f"cargas_{data_atual_arquivo}.xlsx")  # pasta "tmp" deve existir
@@ -147,9 +147,9 @@ def atualizacao_diaria(tentativa_extra=False):
         data_final = data_inicio + timedelta(days=15)
 
         # data_inicio_formato_api = datetime(data_atual.year,data_atual.month,data_atual.day,tzinfo=ZoneInfo("America/Sao_Paulo"))
-        data_final = datetime(data_final.year, data_final.month, data_final.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
+        data_final = datetime(data_final.year, data_final.month, data_final.day, tzinfo=fuso)
         data_final_formato_api = data_final.isoformat()
-        data_inicio_busca = datetime(2025,6,1)
+        data_inicio_busca = datetime(2025,6,1, tzinfo=fuso)  # Data de início fixa para a busca, conforme o código original
 
         try:
             url = f"https://apontamentousinagem.onrender.com/cargas/api/andamento-cargas?start=2025-06-01T00:00:00-03:00&end={data_final_formato_api}"
@@ -161,16 +161,19 @@ def atualizacao_diaria(tentativa_extra=False):
                 print(f'Tamanho dos dados recebidos: {tamanho_dados}')
                 cont = 0
                 data_inicio_escolhida = False
+                ultimo_dia = ''
                 for data in dados:
                     porcentagem_concluida = float(data['title'].split('-')[1].replace('%','').strip())
                     if porcentagem_concluida < 100.0 and not data_inicio_escolhida:
                         dia_com_carga_aberta = data['start'] + ' 00:00:00'
-                        data_inicio = datetime.strptime(dia_com_carga_aberta,"%Y-%m-%d %H:%M:%S")
+                        data_inicio = datetime.strptime(dia_com_carga_aberta, "%Y-%m-%d %H:%M:%S").replace(tzinfo=fuso)
                         print(f'Ainda resta carga para o dia {dia_com_carga_aberta}, iniciando a partir deste dia.')
                         data_inicio_escolhida = True
-                    if cont == (tamanho_dados/2) - 1:
+                    # if cont == (tamanho_dados/2) - 1:
+                    if 'pintura' in data['title'].lower():
                         ultimo_dia = data['start'] + ' 00:00:00'
-                        data_final = datetime.strptime(ultimo_dia,"%Y-%m-%d %H:%M:%S")
+                        data_final = datetime.strptime(ultimo_dia, "%Y-%m-%d %H:%M:%S").replace(tzinfo=fuso)
+                    else:
                         print(f'Último dia de carga liberada: {ultimo_dia}')
                         break
 
@@ -185,10 +188,13 @@ def atualizacao_diaria(tentativa_extra=False):
         print(data_inicio)
         print(data_final)
         
+        data_inicio = data_inicio.replace(tzinfo=None)
+        data_final = data_final.replace(tzinfo=None)
+
+        
         cargas = busca_cargas(data_inicio, data_final)
         conjuntos_filtrados = conectar_com_base(cargas)
         planilha_final = definir_leadtime(conjuntos_filtrados)
-        planilha_pecas = base_levantamento_pecas(planilha_final)
 
         if planilha_final.empty:
             print('Planilha vazia!')
@@ -215,6 +221,15 @@ def atualizacao_diaria(tentativa_extra=False):
         if df_unificado is not None:
             df_unificado.to_excel(caminho, index=False)
             print(f'Planilhas unificadas com sucesso! Caminho: {caminho}')
+            
+            agora = datetime.now()
+            print(f"? Função executada em {agora}")
+
+            # Se for a execução das 6:30, marca como concluída
+            if agora.hour == 6 and agora.minute >= 30 and agora.minute < 59:
+                executou_630 = True
+            elif agora.hour == 18 and agora.minute >= 30 and agora.minute < 59:
+                executou_1830 = True
         else:
             print(f'Planilhas vazias')
         # Prepara JSON de resposta
@@ -255,15 +270,46 @@ def limpar_tmp_antigos(pasta='tmp', segundos=300):
         except Exception as e:
             print(f"Erro ao tentar remover {arquivo}: {e}")
 
+def verificar_execucao_630():
+    global executou_630
+    agora = datetime.now()
+
+    # Se já passou das 9h e ainda não rodou, força execução
+    if agora.hour == 9 and not executou_630:
+        print("?? Função não rodou às 06:30, rodando agora às 09:00")
+        atualizacao_diaria()
+        
+def verificar_execucao_1830():
+    global executou_1830
+    agora = datetime.now()
+
+    # Se já passou das 20h e ainda não rodou, força execução
+    if agora.hour == 20 and not executou_1830:
+        print("?? Função não rodou às 18:30, rodando agora às 20:00")
+        atualizacao_diaria()
+
+def resetar_flags():
+    global executou_630, executou_1830
+    executou_630 = False
+    executou_1830 = False
+    print("?? Flag resetada para um novo dia")
+        
 def agendar_atualizacao():
     print('agendar_atualizacao()')
-    schedule.every().day.at("09:00").do(atualizacao_diaria)
+
+    schedule.every().day.at("06:30").do(atualizacao_diaria)
     schedule.every().day.at("18:30").do(atualizacao_diaria)
+    
+    # checagem extra todo minuto
+    schedule.every(1).minutes.do(verificar_execucao_630)
+    schedule.every(1).minutes.do(verificar_execucao_1830)
+    
+    schedule.every().day.at("00:00").do(resetar_flags)
 
     while True:
         jobs = schedule.get_jobs()  # Retorna a lista de jobs pendentes
         schedule.run_pending()
-        time.sleep(300)
+        time.sleep(10)
         if (datetime.now().hour == 9 and datetime.now().minute >= 40) or datetime.now().hour == 20 and datetime.now().minute >= 40:
             print(jobs)
 
@@ -293,7 +339,7 @@ def exibir_grafico(grafico_id):
     with open(caminho, 'r', encoding='utf-8') as f:
         dados_json  = json.load(f)
 
-    # ✅ Garante que labels e datasets existam
+    # ? Garante que labels e datasets existam
     labels = dados_json.get('grafico', {}).get('labels', [])
     datasets = dados_json.get('grafico', {}).get('datasets', [])
 
@@ -309,5 +355,5 @@ def exibir_grafico(grafico_id):
 
 # Executando a aplicação
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5001)
 

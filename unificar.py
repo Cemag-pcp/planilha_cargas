@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime
 
 def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
+    data_final = data_final.replace(tzinfo=None)
+    data_atual = data_atual.replace(tzinfo=None)
     # Caminho da pasta com os arquivos Excel
     print('Unificando planilhas...')
     pasta = "atualizacao-diaria/arquivos-individuais/"  # <- Altere esse caminho
@@ -21,6 +23,7 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
         for arquivo in os.listdir(pasta):
             if arquivo.endswith('.xlsx') and not arquivo.startswith('~$') and verifica_data_arquivo(arquivo,data_atual):  # Ignora arquivos temporários do Excel
                 caminho_arquivo = os.path.join(pasta, arquivo)
+                # print(caminho_arquivo)
                 df = pd.read_excel(caminho_arquivo)  # Lê a primeira aba
                 df['OPCIONAL 2'] = pd.to_datetime(df['OPCIONAL 2'], dayfirst=True, errors='coerce')
                 #Solução temporária para o recurso vazio para os arquivos 
@@ -60,7 +63,7 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
 
         return planilha_unificada_final
     except Exception as e:
-        print(f"❌ Erro ao unificar planilhas: {e}")
+        print(f"? Erro ao unificar planilhas: {e}")
         return planilha_de_hoje
 
 
@@ -98,6 +101,6 @@ def preencher_recurso(row):
 # data_limite_str = "2025-06-05 00:00:00"
 
 # if verifica_data_arquivo(nome_arquivo, data_limite_str):
-#     print("✅ O arquivo tem data maior ou igual à data limite")
+#     print("? O arquivo tem data maior ou igual à data limite")
 # else:
-#     print("❌ O arquivo tem data menor que a data limite")
+#     print("? O arquivo tem data menor que a data limite")

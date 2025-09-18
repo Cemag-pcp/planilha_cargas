@@ -7,20 +7,6 @@ import numpy as np
 import requests
 import os
 import time
-import re
-
-
-
-#Configuração inicial
-service_account_info = ["GOOGLE_SERVICE_ACCOUNT"]
-scope = ['https://www.googleapis.com/auth/spreadsheets',
-        "https://www.googleapis.com/auth/drive"]
-
-
-credentials = service_account.Credentials.from_service_account_file('credentials.json', scopes=scope)
-
-client = gspread.authorize(credentials)
-
 
 def busca_cargas(data_inicio,data_final):
 
@@ -36,10 +22,20 @@ def busca_cargas(data_inicio,data_final):
     # else:
     #     print(f'Erro na requisição: {response.status_code}')
 
+    #Configuração inicial
+    service_account_info = ["GOOGLE_SERVICE_ACCOUNT"]
+    scope = ['https://www.googleapis.com/auth/spreadsheets',
+            "https://www.googleapis.com/auth/drive"]
+    
+
+    credentials = service_account.Credentials.from_service_account_file('credentials.json', scopes=scope)
+
+
     #ID planilha
     sheet_id = '1olnMhK7OI6W0eJ-dvsi3Lku5eCYqlpzTGJfh1Q7Pv9I'
 
     #Abrindo a planilha pelo ID
+    client = gspread.authorize(credentials)
 
     sh = client.open_by_key(sheet_id)
     #worksheet_name
@@ -92,10 +88,20 @@ def busca_cargas(data_inicio,data_final):
 def conectar_com_base(cargas_filtradas):
     #Nessa função vou ter retorno de tudo (com as quantidades) o que é preciso pra fazer todas as carretas que foram filtradas entre a o intervalo de datas proposto
 
+    #Configuração inicial
+    service_account_info = ["GOOGLE_SERVICE_ACCOUNT"]
+    scope = ['https://www.googleapis.com/auth/spreadsheets',
+            "https://www.googleapis.com/auth/drive"]
+    
+
+    credentials = service_account.Credentials.from_service_account_file('credentials.json', scopes=scope)
+
+
     #ID planilha
     sheet_id = '1n2J6n_VxOsVxY5ikjJeDGva7oHTUJOlzadFfUbJnaSE'
 
     #Abrindo a planilha pelo ID
+    client = gspread.authorize(credentials)
 
     sh = client.open_by_key(sheet_id)
     #worksheet_name
@@ -130,6 +136,16 @@ def conectar_com_base(cargas_filtradas):
     #Colunas Finais: Código, Descrição, quantidade de conjunto, data da carga
     return conjuntos_filtrados
 
+# def parse_data_condicional(data_str):
+#     if pd.isna(data_str):
+#         return pd.NaT
+#     if 'T' in data_str:
+#         # Trata como ISO 8601, com ou sem 'Z'
+#         data_str = data_str.replace('Z', '')  # Remove o 'Z' se houver
+#         return pd.to_datetime(data_str, utc=True, errors='coerce')
+#     else:
+#         # Trata como dd/mm/yyyy HH:MM:SS
+#         return pd.to_datetime(data_str, dayfirst=True, errors='coerce')
 def parse_data_condicional(data_str):
     if pd.isna(data_str):
         return pd.NaT
@@ -153,6 +169,8 @@ def parse_data_condicional(data_str):
 
     # Normaliza para remover hora
     return data.normalize()
+
+
 
 
 # Função que simula o DIATRABALHO (conta só dias úteis)
@@ -209,6 +227,14 @@ def definir_leadtime(conjuntos):
     if conjuntos.empty:
         return conjuntos
 
+    #Configuração inicial
+    service_account_info = ["GOOGLE_SERVICE_ACCOUNT"]
+    scope = ['https://www.googleapis.com/auth/spreadsheets',
+            "https://www.googleapis.com/auth/drive"]
+    
+
+    credentials = service_account.Credentials.from_service_account_file('credentials.json', scopes=scope)
+
 
     #ID planilha lead time
     sheet_id = '1yTQE0tUxiYHKXaACfay5iqGYzl-E01CMMio9Ou3uK2w'
@@ -220,8 +246,11 @@ def definir_leadtime(conjuntos):
     sheet_id_tempos_montagem = '12o38c0nYy4VEhtEu7ixuEyUOLT9ms13sUaPnlEniAGM'
 
     #ID planilha APONTAMENTO SOLDA
-    sheet_id_apontamento_solda = '1XNuXhsDrOUjV0JWuZgo584izugNDgVhY06AIllkwspk'
+    # sheet_id_apontamento_solda = '1XNuXhsDrOUjV0JWuZgo584izugNDgVhY06AIllkwspk'
 
+
+    # Definindo o Cliente
+    client = gspread.authorize(credentials)
 
     #Abrindo a planilha lead time
     sh_leadtime = client.open_by_key(sheet_id)
@@ -229,14 +258,14 @@ def definir_leadtime(conjuntos):
     # Abrindo a planilha de Apontamento Montagem
     sh_apontamento = client.open_by_key(sheet_id_apontamento)
 
-    # Abrindo a planilha de tempos montagem/solda
+    # Abrindo a planilha de tempos montagem/solda/pintura
     sh_tempos_montagem_solda = client.open_by_key(sheet_id_tempos_montagem)
 
     #Abrindo a planilha apontamento de solda
-    sh_apontamento_solda = client.open_by_key(sheet_id_apontamento_solda)
+    # sh_apontamento_solda = client.open_by_key(sheet_id_apontamento_solda)
     
-    #PLANILHA APONTAMENTO SOLDA
-    wks_apontamento_solda = sh_apontamento_solda.worksheet('RQ PCP-031-000 (APONTAMENTO SOLDA)')
+    #PLANILHA APONTAMENTO SOLDA (ABA dados solda)
+    wks_apontamento_solda = sh_tempos_montagem_solda.worksheet('dados solda')
     list_apontamento_solda = wks_apontamento_solda.get_all_values()
 
     # PLANILHA TEMPOS SOLDA/MONTAGEM (ABA dados)
@@ -290,19 +319,19 @@ def definir_leadtime(conjuntos):
 
     #Tratando o df de solda para pegar as colunas de apontamento Solda
     itens_apontamento_solda = pd.DataFrame(list_apontamento_solda)
-    itens_apontamento_solda.columns = itens_apontamento_solda.iloc[1]
-    itens_apontamento_solda = itens_apontamento_solda.drop(index=[0,1])
+    itens_apontamento_solda.columns = itens_apontamento_solda.iloc[0]
+    itens_apontamento_solda = itens_apontamento_solda.drop(index=0)
+    
 
     # Trocando os valores das colunas de solda para fazer o concat
     itens_apontamento_solda['id'] = ''
-    itens_apontamento_solda['codigo'] = itens_apontamento_solda['Código']
-    itens_apontamento_solda['data_inicio'] = itens_apontamento_solda['Data de apontamento inicial']
-    itens_apontamento_solda['data_fim_tratada'] = itens_apontamento_solda['Data de apontamento final']
-    itens_apontamento_solda['data_carga'] = itens_apontamento_solda['Data da carga']
-    itens_apontamento_solda['qt_planejada'] = itens_apontamento_solda['Qtd prod']
-    itens_apontamento_solda['qt_apontada'] = itens_apontamento_solda['Qtd prod']
+    itens_apontamento_solda['codigo'] = itens_apontamento_solda['codigo'].str.split('-').str[0].str.strip()  # Pega somente o código antes do traço
+    # itens_apontamento_solda['data_inicio'] = itens_apontamento_solda['Data de apontamento inicial']
+    # itens_apontamento_solda['data_fim_tratada'] = itens_apontamento_solda['Data de apontamento final']
+    # itens_apontamento_solda['data_carga'] = itens_apontamento_solda['Data da carga']
+    # itens_apontamento_solda['qt_planejada'] = itens_apontamento_solda['Qtd prod']
+    # itens_apontamento_solda['qt_apontada'] = itens_apontamento_solda['Qtd prod']
     itens_apontamento_solda['status'] = ''
-
 
     itens_apontamento_solda['data_inicio'] = itens_apontamento_solda['data_inicio'].apply(parse_data_condicional)
     itens_apontamento_solda['data_fim_tratada'] = itens_apontamento_solda['data_fim_tratada'].apply(parse_data_condicional)
@@ -319,7 +348,7 @@ def definir_leadtime(conjuntos):
     itens_tempos = pd.concat([itens_tempos_montagem,itens_pintura,itens_apontamento_solda])
     
     itens_tempos['codigo'] = itens_tempos['codigo'].str.lstrip('0')
-    # 1. Obter a primeira ocorrência de cada carga → para data_liberacao
+    # 1. Obter a primeira ocorrência de cada carga ? para data_liberacao
 
     primeira_aparicao_montagem = (
         itens_tempos[(itens_tempos['etapa'] == 'montagem') & (itens_tempos['status'] != 'finalizada')]
@@ -350,8 +379,8 @@ def definir_leadtime(conjuntos):
 
 
 
-    # 2. Obter a última ocorrência de cada carga → para data_entrega
-    # Para etapa = montagem e status = finalizado → soma qt_apontada
+    # 2. Obter a última ocorrência de cada carga ? para data_entrega
+    # Para etapa = montagem e status = finalizado ? soma qt_apontada
     itens_tempos['qt_planejada'] = pd.to_numeric(itens_tempos['qt_planejada'],errors='coerce').fillna(0)
     itens_tempos['qt_apontada'] = pd.to_numeric(itens_tempos['qt_apontada'],errors='coerce').fillna(0)
 
@@ -364,7 +393,7 @@ def definir_leadtime(conjuntos):
         })
     )
 
-    # Para outros casos → pega o último valor normalmente
+    # Para outros casos ? pega o último valor normalmente
     pintura = (
         itens_tempos[itens_tempos['etapa'] == 'pintura']
         .groupby(['codigo', 'data_carga', 'etapa'], as_index=False)
@@ -592,7 +621,7 @@ def definir_leadtime(conjuntos):
     condicoes_status_pintura = [
         (df_transformado['data_inicio'].isna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['ETAPA'] == 'PINTURA'),
         # (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].isna()) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
-        (df_transformado['data_inicio'].notna()) & (df_transformado['qt_planejada'] >= df_transformado['qt_apontada']) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
+        (df_transformado['data_inicio'].notna()) & ((df_transformado['qt_planejada'] > df_transformado['qt_apontada']) | (df_transformado['data_fim_tratada'].isna())) & (df_transformado['qt_planejada'] > 0) & (df_transformado['ETAPA'] == 'PINTURA'),
         (df_transformado['data_inicio'].notna()) & (df_transformado['data_fim_tratada'].notna()) & (df_transformado['qt_planejada'] <= df_transformado['qt_apontada']) & (df_transformado['ETAPA'] == 'PINTURA') & (df_transformado['qt_planejada'] > 0)
     ]
 
@@ -616,6 +645,11 @@ def definir_leadtime(conjuntos):
     valor_data_entrega_pintura = (df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1))
     valor_data_entrega_montagem = ((df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1)) - valor_lead_time_pintura - valor_lead_time_solda)
     valor_data_entrega_solda = ((df_transformado['PED_PREVISAOEMISSAODOC'] - BDay(1)) - valor_lead_time_pintura - valor_lead_time_montagem)
+    
+    # Aplicando ajuste às séries
+    valor_data_entrega_pintura = ajustar_para_dia_util(valor_data_entrega_pintura)
+    valor_data_entrega_montagem = ajustar_para_dia_util(valor_data_entrega_montagem)
+    valor_data_entrega_solda = ajustar_para_dia_util(valor_data_entrega_solda)
 
     condicoes_data_entrega = [
         (df_transformado['ETAPA'] == 'PINTURA'),
@@ -700,7 +734,6 @@ def definir_leadtime(conjuntos):
     df_transformado['OPCIONAL 3'] = df_transformado['montagem']
     df_transformado['OPCIONAL 4'] = df_transformado['solda']
     df_transformado['OPCIONAL 5'] = df_transformado['pintura']
-    # SUGESTÃO DE INICIO
     df_transformado['OPCIONAL 6'] = np.select(condicoes_opcional_6,valores_opcional_6,default='')
     df_transformado['OPCIONAL 7'] = df_transformado['carreta']
     # SELECAO DA COR
@@ -725,252 +758,15 @@ def definir_leadtime(conjuntos):
 
     df_transformado = df_transformado.where(pd.notnull(df_transformado),None)
 
-    # df_transformado = df_transformado[df_transformado['Recurso'].str.upper() == 'FUEIRO']
-
+    # plan = df_transformado.to_dict(orient='records')
 
     return df_transformado
 
 
-def base_levantamento_pecas(df_transformado):
-
-    """
-    Essa função vai puxar a a base de levantamento de peças para as cargas que ainda estão abertas, isso será feito apenas no arquivo do dia.
-    """
-    time.sleep(0.5)
+# Função para ajustar finais de semana para o dia útil anterior
+def ajustar_para_dia_util(series):
+    return series.apply(lambda x: x + BDay(1) if x.dayofweek >= 5 else x)
 
 
-    #ID planilha LEVANTAMENTO PARA CORTE
-    # sheet_id = '1_-Ss5TVaIIGi8fx--_uUZFUOSk4cTe3lUF8t7qtEJNA'
-    sheet_id = '1Hyc5E8OY9uxcZFXC4goK9D_dEh9-OTDLL2p3w4iZEFo'
-
-    print('base_levantamento_pecas 1...')
-
-    #Abrindo a planilha lead time
-    sh_leadtime = client.open_by_key(sheet_id)
-    #worksheet_name - LEADTIME
-    wks = sh_leadtime.worksheet('tabela')
-    list1 = wks.get_all_values()
-
-    pecas = pd.DataFrame(list1)
-    # print(itens)
-    pecas.columns = pecas.iloc[1]
-    pecas = pecas.drop(index=[0,1])
-
-    pecas = pecas[['COD','QTD','DATA CARGA','CONJUNTO','DESCRIÇÃO','MP','1º PROCESSO','2º PROCESSO','SETOR','STATUS','OQUE IREI CONSUMIR']]
-    # print(pecas)
-    #OPCIONAL SE É PEÇA OU NÃO
-    df_transformado['OPCIONAL 8'] = ""
-    # base_com_pecas_dia = pd.merge(df_transformado, pecas, left_on=['OPCIONAL 2','Descrição do Produto'], right_on=['DATA CARGA','CONJUNTO'], how='left')
 
 
-    print('base_levantamento_pecas...')
-
-    novas_linhas = []
-
-    data_base = ''
-
-    for i in range(len(df_transformado)):
-        linha_atual = df_transformado.iloc[i]
-        novas_linhas.append(linha_atual) # adiciona a linha atual à lista
-
-        if linha_atual['Status'] != 'Finalizada' and linha_atual['Local'] == 'MONTAGEM':
-            # Filtra planilha de pecas por código e data iguais
-            match_pecas = pecas[
-                (pecas['DATA CARGA'] == linha_atual['OPCIONAL 2']) &
-                (pecas['CONJUNTO'] == linha_atual['Descrição do Produto']) 
-            ]
-            
-
-            if not match_pecas.empty:
-                for _, peca in match_pecas.iterrows():
-                    if 'OK' not in peca['STATUS'].strip().upper():  # Verifica se a peça não está finalizada
-                        nova_linha = linha_atual.copy()
-                        nova_linha['Produto'] = peca['COD']
-                        nova_linha['Descrição do Produto'] = peca['DESCRIÇÃO']
-
-                        status_split = peca['STATUS'].strip().upper().split(' ')
-                        if len(status_split) > 1:
-                            nova_linha['Quantidade'] = pd.to_numeric(peca['OQUE IREI CONSUMIR'], errors='coerce')
-                            nova_linha['Quantidade_Original'] = pd.to_numeric(peca['QTD'],errors='coerce')
-                            nova_linha['Local'] = peca['1º PROCESSO']
-                            nova_linha['OPCIONAL 8'] = 'PEÇA'
-                            nova_linha['quantidade_individual'] = pd.to_numeric(peca['QTD'],errors='coerce')
-                            
-
-                            # VERIFICANDO SE NO STATUS CONTEM VIRAR E SE A QUANTIDADE PLANEJADA DE PECAS É MAIOR QUE A QUANTIDADE DO STATUS
-                            if status_split[0] == "ESTAMPAR":
-                                nova_linha['Status'] = "Finalizada"
-                            else:
-                                if pd.to_numeric(peca['QTD'],errors='coerce') > nova_linha['Quantidade']:
-                                    nova_linha['Status'] = "Em Processo"
-                                else:
-                                    nova_linha['Status'] = "Aguardando Liberação"
-                        #DEFININDO A DATA DA SUGESTAO DE INICIO DAS PEÇAS
-                        if peca['2º PROCESSO'].strip() != '': # Se houver um segundo processo
-                            # nova_linha['OPCIONAL 6'] = (pd.to_datetime(linha_atual["OPCIONAL 6"], format="%d/%m/%Y") - pd.Timedelta(days=3)).strftime('%d/%m/%Y')
-                            nova_linha['OPCIONAL 6'] = pd.to_datetime(linha_atual["OPCIONAL 6"], format="%d/%m/%Y") - BDay(3)
-                            nova_linha['OPCIONAL 6'] = nova_linha['OPCIONAL 6'].strftime('%d/%m/%Y')
-                        else: # Se não houver segundo processo
-                            # nova_linha['OPCIONAL 6'] = (pd.to_datetime(linha_atual["OPCIONAL 6"], format="%d/%m/%Y") - pd.Timedelta(days=2)).strftime('%d/%m/%Y')
-                            nova_linha['OPCIONAL 6'] = pd.to_datetime(linha_atual["OPCIONAL 6"], format="%d/%m/%Y") - BDay(2)
-                            nova_linha['OPCIONAL 6'] = nova_linha['OPCIONAL 6'].strftime('%d/%m/%Y')
-
-                        nova_linha['Data de Entrega'] = pd.to_datetime(nova_linha['OPCIONAL 6'], format="%d/%m/%Y") + BDay(1)
-                        nova_linha['Data de Entrega'] = nova_linha['Data de Entrega'].strftime('%d/%m/%Y')
-
-                        novas_linhas.append(nova_linha)
-
-                        if peca['2º PROCESSO'].strip() != '':
-                            nova_linha_2 = nova_linha.copy()
-                            nova_linha_2['Local'] = peca['2º PROCESSO']
-                            nova_linha_2['OPCIONAL 6'] = pd.to_datetime(linha_atual["OPCIONAL 6"], format="%d/%m/%Y") - BDay(1)
-                            nova_linha_2['OPCIONAL 6'] = nova_linha_2['OPCIONAL 6'].strftime('%d/%m/%Y')
-                            nova_linha_2['Data de Entrega'] = pd.to_datetime(nova_linha_2["OPCIONAL 6"], format="%d/%m/%Y") + BDay(1)
-                            nova_linha_2['Data de Entrega'] = nova_linha_2['Data de Entrega'].strftime('%d/%m/%Y')
-
-                            if status_split[0] == "ESTAMPAR":
-                                if pd.to_numeric(peca['QTD'],errors='coerce') > nova_linha['Quantidade']:
-                                    nova_linha_2['Status'] = "Em Processo"
-                                else:
-                                    nova_linha_2['Status'] = "Aguardando Liberação"
-                            else:
-                                nova_linha_2['Status'] = "Aguardando Liberação"
-
-                            # Se a peça já estiver finalizada,remove a ultima linha adicionada, dado que não é preciso mapear peças finalizadas
-                            if nova_linha['Status'] == "Finalizada":
-                                novas_linhas.pop() 
-                            novas_linhas.append(nova_linha_2)
-                    
-    base_com_pecas_dia = pd.DataFrame(novas_linhas)
-
-    data_primeira_peca_nao_finalizada = base_com_pecas_dia[base_com_pecas_dia['OPCIONAL 8'].notna() & (base_com_pecas_dia['OPCIONAL 8'].str.strip() != '')]
-
-    if not data_primeira_peca_nao_finalizada.empty:
-        data_primeira_peca_nao_finalizada = data_primeira_peca_nao_finalizada.sort_values(by='OPCIONAL 8')
-        data_base = data_primeira_peca_nao_finalizada.iloc[0]['OPCIONAL 6']
-        data_base = pd.to_datetime(data_base, format="%d/%m/%Y") - pd.Timedelta(days=1)
-        data_base_dt = data_base.date()
-        print(data_base_dt)
-
-        apontamento = apontamento_pecas(data_base_dt)
-
-        apontamento['qt_plan'] = pd.to_numeric(apontamento['qt_plan'], errors='coerce').fillna(0).astype(int)
-
-        apontamento_agrupado = apontamento.groupby('peca')['qt_plan'].sum().reset_index()
-        
-
-        check_peca_programado = pd.merge(base_com_pecas_dia,apontamento_agrupado,left_on=base_com_pecas_dia['Produto'],right_on=apontamento_agrupado['peca'],how='left')
-
-        # print(check_peca_programado)
-
-        apontamento_agrupado['modificado'] = ''
-        check_peca_programado['OPCIONAL 9'] = ''
-        # Pegando so as peças
-        for i in range(len(check_peca_programado)):
-            linha_atual = check_peca_programado.iloc[i]
-
-            if pd.notna(linha_atual['peca']) and str(linha_atual['peca']).strip() != '':
-                filtro = apontamento_agrupado[apontamento_agrupado['peca'] == linha_atual['peca']]
-                
-                if not filtro.empty:
-                    filtro = filtro.iloc[0]
-                    # print(filtro)
-                    # print(apontamento_agrupado[apontamento_agrupado['peca'] == '494495'])
-                    if filtro['modificado'] == '' or filtro['modificado'] is None:
-                        check_peca_programado.at[i, 'qt_plan'] = filtro['qt_plan']
-                        idx = apontamento_agrupado[apontamento_agrupado['peca'] == linha_atual['peca']].index[0]
-                        apontamento_agrupado.at[idx, 'modificado'] = 'sim'
-                        
-                        if check_peca_programado.at[i, 'qt_plan'] <= 0 or (check_peca_programado.at[i, 'qt_plan'] < check_peca_programado.at[i,'quantidade_individual']):
-                            check_peca_programado.at[i,'OPCIONAL 9'] = 'Aguardando Programação'
-                            apontamento_agrupado.at[idx, 'qt_plan'] -= linha_atual['Quantidade']
-                        else:
-                            #reduzindo valor
-                            apontamento_agrupado.at[idx, 'qt_plan'] -= linha_atual['Quantidade']
-                            check_peca_programado.at[i,'OPCIONAL 9'] = 'Programada'
-                    else:
-                        check_peca_programado.at[i, 'qt_plan'] = filtro['qt_plan']
-
-                        if check_peca_programado.at[i, 'qt_plan'] <= 0 or (check_peca_programado.at[i, 'qt_plan'] < check_peca_programado.at[i,'quantidade_individual']):
-                            #reduzindo valor
-                            check_peca_programado.at[i,'OPCIONAL 9'] = 'Aguardando Programação'
-                        else:
-                            idx = apontamento_agrupado[apontamento_agrupado['peca'] == linha_atual['peca']].index[0]
-                            apontamento_agrupado.at[idx, 'qt_plan'] -= linha_atual['Quantidade']
-                            check_peca_programado.at[i,'OPCIONAL 9'] = 'Programada'                
-            elif pd.notna(linha_atual['OPCIONAL 8']) and str(linha_atual['OPCIONAL 8']).strip() != '' and str(linha_atual['OPCIONAL 8']).strip() == 'PEÇA':
-                check_peca_programado.at[i, 'OPCIONAL 9'] = 'Aguardando Programação'
-
-        colunas_desejadas = ['Data','Ordem de Produção','Produto','Cor','Tamanho','Descrição do Produto','Quantidade','Quantidade_Original','Cliente','Unidade Fabril','Local',
-                         'Recurso','Grupo','SubGrupo','Status','Data de Emissão','Data de Liberação','Data de Entrega','Data de Encerramento','Valor Unitário',
-                         'OPCIONAL 1','OPCIONAL 2','OPCIONAL 3','OPCIONAL 4','OPCIONAL 5','OPCIONAL 6','OPCIONAL 7','COR PRIORIDADE','OPCIONAL 8','OPCIONAL 9']
-        
-        check_peca_programado = check_peca_programado[colunas_desejadas]
-
-        return check_peca_programado
-    
-
-    return base_com_pecas_dia
-
-def apontamento_pecas(data_base_dt=None):
-  
-    time.sleep(0.5)
-
-    #ID planilha Base de apontamentos
-    sheet_id = '1XYe4PiUwnfjU3vhQjvr-ZmmAP3P1klXXpWfDtA3qG2I'
-
-    print('base_apontamento 1...')
-
-    #Abrindo a planilha lead time
-    sh_leadtime = client.open_by_key(sheet_id)
-    #worksheet_name - LEADTIME
-    wks = sh_leadtime.worksheet('Criadas corte')
-    list1 = wks.get_all_values()
-
-    apontamento_pecas = pd.DataFrame(list1)
-    # print(itens)
-    apontamento_pecas.columns = apontamento_pecas.iloc[0]
-    apontamento_pecas = apontamento_pecas.drop(index=[0])
-
-    apontamento_pecas['data_criada'] = pd.to_datetime(apontamento_pecas['data_criada'].str.strip(), format="%d/%m/%Y %H:%M", errors='coerce')
-    apontamento_pecas['data_criada'] = apontamento_pecas['data_criada'].dt.date
-
-    apontamento_pecas['peca'] = apontamento_pecas['peca'].apply(regex_codigo)
-
-    apontamento_pecas = apontamento_pecas[
-        (apontamento_pecas['data_criada'] > data_base_dt) &
-        (apontamento_pecas['status_atual'] != 'finalizada')
-    ]
-
-
-    apontamento_pecas['qt_plan'] = pd.to_numeric(apontamento_pecas['qt_plan'], errors='coerce').fillna(0).astype(int)
-
-    # apontamento_agrupado = apontamento_pecas.groupby('peca')['qt_plan'].sum().reset_index()
-
-    return apontamento_pecas
-
-
-def split_codigo(peca):
-    peca = str(peca).strip()
-
-    if len(peca.split('-')) > 1:
-        return split_codigo(peca.split('-')[0].strip())
-    elif len(peca.split('.')) > 1:
-        return split_codigo(peca.split('.')[0].strip())
-    elif len(peca.strip().split(' ')) > 1:
-        return split_codigo(peca.split(' ')[0].strip())
-    else:
-        return peca.strip()
-
-
-def regex_codigo(peca):
-    peca = str(peca).strip()
-
-    match = re.search(r'\d+', peca)  # procura uma sequência de dígitos
-
-    if match:
-        codigo = match.group()
-        # print(codigo)  # saída: 494653
-        return codigo
-    else:
-        return peca
