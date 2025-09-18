@@ -16,7 +16,7 @@ import threading
 from functools import partial
 
 # 3. Imports locais
-from conexao_plan import busca_cargas, conectar_com_base, definir_leadtime
+from conexao_plan import busca_cargas, conectar_com_base, definir_leadtime, base_levantamento_pecas
 from unificar import unificar_planilhas
 
 
@@ -41,8 +41,14 @@ def processar():
     cargas = busca_cargas(data_inicio, data_final)
     conjuntos_filtrados = conectar_com_base(cargas)
     planilha_final = definir_leadtime(conjuntos_filtrados)
+    
+    try:
+        planilha_final_pecas = base_levantamento_pecas(planilha_final)
+    except requests.exceptions.ConnectTimeout:
+        print("❌ Conexão com o Google Sheets expirou. Verifique sua internet ou VPN.")
+        return Response({"erro": "Conexão com o Google Sheets expirou. Verifique sua internet ou VPN."}), 504
 
-    if planilha_final.empty:
+    if planilha_final_pecas.empty:
         return Response(json.dumps({'dados': []}), content_type='application/json', status=400)
 
     # Gera nome único para o arquivo
@@ -52,7 +58,7 @@ def processar():
 
 
     # Salva o DataFrame como Excel em disco
-    planilha_final.to_excel(caminho, index=False)
+    planilha_final_pecas.to_excel(caminho, index=False)
 
     # Agrupando o df para gerar o gráfico
 
@@ -101,7 +107,7 @@ def processar():
 
 
     # Prepara JSON de resposta
-    plan_json = planilha_final.to_dict(orient='records')
+    plan_json = planilha_final_pecas.to_dict(orient='records')
     json_data = json.dumps({'dados': plan_json, 
                             'arquivo': nome_arquivo,
                             }, ensure_ascii=False, indent=4)
@@ -182,6 +188,7 @@ def atualizacao_diaria(tentativa_extra=False):
         cargas = busca_cargas(data_inicio, data_final)
         conjuntos_filtrados = conectar_com_base(cargas)
         planilha_final = definir_leadtime(conjuntos_filtrados)
+        planilha_pecas = base_levantamento_pecas(planilha_final)
 
         if planilha_final.empty:
             print('Planilha vazia!')
