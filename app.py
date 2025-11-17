@@ -54,52 +54,6 @@ def processar():
     # Salva o DataFrame como Excel em disco
     planilha_final.to_excel(caminho, index=False)
 
-    # Agrupando o df para gerar o gráfico
-
-    # agrupado = planilha_final[['Recurso','Status','COR PRIORIDADE']].groupby(['Recurso', 'Status','COR PRIORIDADE']).size().reset_index(name='ocorrencias')
-
-     # Gerar gráficos
-
-    # Pegar todos os recursos únicos pro eixo X
-    # recursos = planilha_final['Recurso'].unique().tolist()
-    # print(recursos)
-
-    # # Agrupar por Status + Cor
-    # # agrupado = planilha_final.groupby(['Status', 'COR PRIORIDADE'])
-
-    # agrupado = planilha_final.groupby(['Recurso', 'Status', 'COR PRIORIDADE']).size().reset_index(name='ocorrencias')
-    # print(agrupado)
-
-    # datasets = []
-
-    # for (status, cor), grupo in agrupado.groupby(['Status', 'COR PRIORIDADE']):
-    #     data = []
-    #     print(grupo)
-    #     for recurso in recursos:
-    #         ocorrencias = grupo.loc[grupo['Recurso'] == recurso, 'ocorrencias']
-    #         data.append(ocorrencias.iloc[0] if not ocorrencias.empty else 0)
-
-    #     datasets.append({
-    #         'label': f'{status}',
-    #         'backgroundColor': cor.split('.')[-1].lower(),  # ex: 'AZUL'
-    #         'data': data,
-    #         'stack': 'stack1'
-    #     })
-
-    # print(datasets)
-
-    # grafico_id = f"grafico_{uuid.uuid4().hex}.json"
-    # caminho_grafico = os.path.join('tmp', grafico_id)
-    # print(caminho_grafico)
-
-    # # with open(caminho_grafico, 'w', encoding='utf-8') as f:
-    # #     json.dump({'labels': recursos, 'datasets': datasets}, f, ensure_ascii=False)
-    # with open(caminho_grafico, 'w', encoding='utf-8') as f:
-    #     json.dump({'labels': recursos, 'datasets': datasets}, f, ensure_ascii=False, default=int)
-
-
-
-
     # Prepara JSON de resposta
     plan_json = planilha_final.to_dict(orient='records')
     json_data = json.dumps({'dados': plan_json, 
@@ -134,14 +88,6 @@ def atualizacao_diaria(tentativa_extra=False):
         fuso = ZoneInfo("America/Sao_Paulo")
         data_atual = date.today()
         data_atual_arquivo = data_atual
-        # caminho_arquivo = os.path.join("atualizacao-diaria", f"cargas_{data_atual_arquivo}.xlsx")  # pasta "tmp" deve existir
-
-        # if os.path.exists(caminho_arquivo) and datetime.now().hour <= 14:
-        #     print('Arquivo do dia já existe!')
-        #     return "Arquivo já existe"
-        # elif os.path.exists(caminho_arquivo) and datetime.now().hour > 15:
-        #     os.remove(caminho_arquivo)
-        #     print('Arquivo deletado')
 
         data_inicio = datetime(data_atual.year,data_atual.month,data_atual.day)
         data_final = data_inicio + timedelta(days=15)
@@ -232,12 +178,6 @@ def atualizacao_diaria(tentativa_extra=False):
                 executou_1830 = True
         else:
             print(f'Planilhas vazias')
-        # Prepara JSON de resposta
-        # plan_json = df_unificado.to_dict(orient='records')
-        # json_data = json.dumps({'dados': plan_json, 
-        #                         'arquivo': nome_arquivo,
-        #                         }, ensure_ascii=False, indent=4)
-        # return {"status": "ok", "dados": df_unificado.to_dict(orient='records'), "arquivo": nome_arquivo}
     
     except Exception as e:
         print(f"Ocorreu um erro! {e}")

@@ -8,11 +8,6 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
     # Caminho da pasta com os arquivos Excel
     print('Unificando planilhas...')
     pasta = "atualizacao-diaria/arquivos-individuais/"  # <- Altere esse caminho
-    # Gera nome único para o arquivo
-    # nome_arquivo = f"planilha_unificada_{data_atual_arquivo}.xlsx"
-    # os.makedirs('atualizacao-diaria/unificadas', exist_ok=True)
-    # caminho = os.path.join("atualizacao-diaria/unificadas", nome_arquivo)
-    # print(caminho)
 
     try:   
 
@@ -46,9 +41,6 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
         planilha_unificada_finalizadas = planilha_unificada[planilha_unificada['Status'] == 'Finalizada']
         planilha_unificada_finalizadas = planilha_unificada_finalizadas.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
 
-        # planilha_unificada = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
-        # planilha_unificada_finalizadas = planilha_unificada.drop_duplicates(subset=['Ordem de Produção', 'Produto', 'OPCIONAL 7','Status'])
-
         #Modificando a coluna 'Data' do que está finalizado para a data de hoje para a data de hoje
         planilha_unificada_finalizadas['Data'] = datetime.today().strftime('%d/%m/%Y')
 
@@ -58,8 +50,6 @@ def unificar_planilhas(data_atual_arquivo,data_final,data_atual):
 
         planilha_unificada_final = planilha_unificada_final.sort_values(by='OPCIONAL 2')
         planilha_unificada_final['OPCIONAL 2'] = planilha_unificada_final['OPCIONAL 2'].dt.strftime('%d/%m/%Y')
-        # Salva em um novo arquivo Excel
-        # planilha_unificada_final.to_excel(caminho, index=False)
 
         return planilha_unificada_final
     except Exception as e:
@@ -96,11 +86,3 @@ def preencher_recurso(row):
     else:
         return row['Recurso']
 
-# Exemplo de uso
-# nome_arquivo = "cargas_2025-04-30.xlsx"
-# data_limite_str = "2025-06-05 00:00:00"
-
-# if verifica_data_arquivo(nome_arquivo, data_limite_str):
-#     print("? O arquivo tem data maior ou igual à data limite")
-# else:
-#     print("? O arquivo tem data menor que a data limite")

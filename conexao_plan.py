@@ -69,7 +69,6 @@ def busca_cargas(data_inicio,data_final):
     print('itens-------')
     print(itens_filtrados)
 
-    # itens_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\cargas_filtradas.xlsx',index=False)
     #Desconsiderar os códigos de cores VJ, VM, AN, LC, LJ, AM
     codigos_desconsiderados = ['VJ', 'VM', 'AN', 'LC', 'LJ', 'AM','AV']
 
@@ -80,8 +79,6 @@ def busca_cargas(data_inicio,data_final):
     itens_filtrados.loc[:, 'PED_RECURSO.CODIGO'] = itens_filtrados['PED_RECURSO.CODIGO'].str.replace(padrao, '', regex=True)
     # Removendo espaços que ficaram
     itens_filtrados['PED_RECURSO.CODIGO'] = itens_filtrados['PED_RECURSO.CODIGO'].str.strip()
-
-    # itens_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\cargas_filtradas.xlsx',index=False)
 
     return itens_filtrados
 
@@ -132,20 +129,9 @@ def conectar_com_base(cargas_filtradas):
 
     conjuntos_filtrados = itens[colunas_desejadas]
 
-    # conjuntos_filtrados.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_filtrados.xlsx',index=False)
     #Colunas Finais: Código, Descrição, quantidade de conjunto, data da carga
     return conjuntos_filtrados
 
-# def parse_data_condicional(data_str):
-#     if pd.isna(data_str):
-#         return pd.NaT
-#     if 'T' in data_str:
-#         # Trata como ISO 8601, com ou sem 'Z'
-#         data_str = data_str.replace('Z', '')  # Remove o 'Z' se houver
-#         return pd.to_datetime(data_str, utc=True, errors='coerce')
-#     else:
-#         # Trata como dd/mm/yyyy HH:MM:SS
-#         return pd.to_datetime(data_str, dayfirst=True, errors='coerce')
 def parse_data_condicional(data_str):
     if pd.isna(data_str):
         return pd.NaT
@@ -169,8 +155,6 @@ def parse_data_condicional(data_str):
 
     # Normaliza para remover hora
     return data.normalize()
-
-
 
 
 # Função que simula o DIATRABALHO (conta só dias úteis)
@@ -247,7 +231,6 @@ def definir_leadtime(conjuntos):
 
     #ID planilha APONTAMENTO SOLDA
     # sheet_id_apontamento_solda = '1XNuXhsDrOUjV0JWuZgo584izugNDgVhY06AIllkwspk'
-
 
     # Definindo o Cliente
     client = gspread.authorize(credentials)
@@ -326,11 +309,6 @@ def definir_leadtime(conjuntos):
     # Trocando os valores das colunas de solda para fazer o concat
     itens_apontamento_solda['id'] = ''
     itens_apontamento_solda['codigo'] = itens_apontamento_solda['codigo'].str.split('-').str[0].str.strip()  # Pega somente o código antes do traço
-    # itens_apontamento_solda['data_inicio'] = itens_apontamento_solda['Data de apontamento inicial']
-    # itens_apontamento_solda['data_fim_tratada'] = itens_apontamento_solda['Data de apontamento final']
-    # itens_apontamento_solda['data_carga'] = itens_apontamento_solda['Data da carga']
-    # itens_apontamento_solda['qt_planejada'] = itens_apontamento_solda['Qtd prod']
-    # itens_apontamento_solda['qt_apontada'] = itens_apontamento_solda['Qtd prod']
     itens_apontamento_solda['status'] = ''
 
     itens_apontamento_solda['data_inicio'] = itens_apontamento_solda['data_inicio'].apply(parse_data_condicional)
@@ -344,7 +322,6 @@ def definir_leadtime(conjuntos):
 
 
     #Concatenando as três planilhas de tempos
-    # itens_tempos = pd.concat([itens_tempos_montagem,itens_pintura])
     itens_tempos = pd.concat([itens_tempos_montagem,itens_pintura,itens_apontamento_solda])
     
     itens_tempos['codigo'] = itens_tempos['codigo'].str.lstrip('0')
@@ -376,8 +353,6 @@ def definir_leadtime(conjuntos):
             'qt_planejada': 'first'
         })
     )
-
-
 
     # 2. Obter a última ocorrência de cada carga ? para data_entrega
     # Para etapa = montagem e status = finalizado ? soma qt_apontada
@@ -417,32 +392,13 @@ def definir_leadtime(conjuntos):
 
     pintura = pintura[['codigo','data_carga','etapa','qt_apontada','data_fim_tratada']]
     montagem_finalizado = montagem_finalizado[['codigo','data_carga','etapa','qt_apontada','data_fim_tratada']]
-
-    
+ 
 
     montagem_finalizado['codigo'] = montagem_finalizado['codigo'].str.lstrip('0')
 
     primeira_aparicao = pd.concat([primeira_aparicao_montagem, primeira_aparicao_pintura, primeira_aparicao_solda], ignore_index=True)
 
-    # primeira_aparicao.to_excel(r'C:\Users\TIDEV\Desktop\primeira_aparicao.xlsx',index=False)
-    # pintura.to_excel(r'C:\Users\TIDEV\Desktop\pintura_tempos.xlsx',index=False)
-
     ultima_aparicao = pd.concat([montagem_finalizado, pintura, solda], ignore_index=True)
-  
-    # print(primeira_aparicao.head())
-    # print(primeira_aparicao.tail())
-    # print(primeira_aparicao.sample(5))
-    # print(primeira_aparicao.shape)
-    # print(primeira_aparicao.columns)
-    # print(primeira_aparicao.info())
-
-    # print("--------------------------")
-    # print(ultima_aparicao.head())
-    # print(ultima_aparicao.tail())
-    # print(ultima_aparicao.sample(5))
-    # print(ultima_aparicao.shape)
-    # print(ultima_aparicao.columns)
-    # print(ultima_aparicao.info())
 
     # PEGANDO OS CODIGOS QUE CONTEM ZERO E ESTABELECENDO OUTRA COLUNA
     conjuntos['CODIG'] = conjuntos['COD'].str.lstrip('0')
@@ -450,17 +406,8 @@ def definir_leadtime(conjuntos):
 
     # 3. Juntar com a tabela A
     df_resultado = pd.merge(conjuntos, primeira_aparicao, left_on=['CODIG','PED_PREVISAOEMISSAODOC'], right_on=['codigo','data_carga'], how='left')
-
-    # df_resultado['qt_planejada'] = pd.to_numeric(df_resultado['qt_planejada'],errors='coerce').fillna(0)
-    # df_transformado['qt_apontada'] = pd.to_numeric(df_transformado['qt_apontada'],errors='coerce').fillna(0)
     
-    # df_resultado = df_resultado.drop_duplicates(subset=['carreta', 'COD', 'data_carga', 'etapa'], keep='first')
-    
-
-    # df_resultado.to_excel(r'C:\Users\TIDEV\Desktop\df_resultado.xlsx',index=False)
     conjuntos_tempos = pd.merge(df_resultado, ultima_aparicao, left_on=['CODIG','PED_PREVISAOEMISSAODOC'], right_on=['codigo','data_carga'], how='left')
-    # conjuntos_tempos.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_tempos.xlsx',index=False)
-
 
     # PLANILHA APONTAMENTO MONTAGEM
     wks_apontamento = sh_apontamento.worksheet('RQ PCP 002-000 (APONTAMENTO MONTAGEM)')
@@ -478,17 +425,8 @@ def definir_leadtime(conjuntos):
     ]
     itens_montagem = itens_montagem.groupby(['Código'],as_index=False).last().reset_index()
 
-    # itens_montagem.to_excel(r'C:\Users\TIDEV\Desktop\celulas_montagem.xlsx',index=False)
-    # print(itens_montagem)
-
-    # itens_montagem.to_excel('itens_montagem.xlsx', index=False)
-
 
     conjuntos_tempos_montagem = pd.merge(conjuntos_tempos,itens_montagem,left_on='COD',right_on='Código',how='inner')
-
-    # conjuntos_tempos_montagem.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_tempos_montagem.xlsx',index=False)
-
-
 
     #worksheet_name - LEADTIME
     wks = sh_leadtime.worksheet('Página3')
@@ -504,16 +442,11 @@ def definir_leadtime(conjuntos):
     itens = itens[itens[['lead time montagem', 'lead time solda', 'lead time pintura']].notna().all(axis=1) &
               (itens[['lead time montagem', 'lead time solda', 'lead time pintura']] != '').all(axis=1)]
 
-    # for coluna in itens.columns:
-    #     print(coluna)
-
     # Lista para armazenar as novas linhas
     novas_linhas = []
-    # print(itens)
     codigo_anterior = ''
     setores_adicionados = []
 
-    # itens.to_excel(r'C:\Users\TIDEV\Desktop\conjuntos_itens.xlsx',index=False)
 
     itens.reset_index(drop=True, inplace=True)
 
@@ -545,8 +478,6 @@ def definir_leadtime(conjuntos):
 
         #VERIFICADOR DIFERENTE DE TUDO
         # etapa_diff_tudo = not etapa_montagem_check and not etapa_solda_check and not etapa_pintura_check
-
-        #verificar 
 
         if lead_time_montagem_check and etapa_montagem_check:
             linha = {coluna: row[coluna] for coluna in itens.columns}
@@ -754,19 +685,10 @@ def definir_leadtime(conjuntos):
 
     df_transformado = df_transformado[colunas_desejadas]
 
-    # print(df_transformado)
-
     df_transformado = df_transformado.where(pd.notnull(df_transformado),None)
 
-    # plan = df_transformado.to_dict(orient='records')
-
     return df_transformado
-
 
 # Função para ajustar finais de semana para o dia útil anterior
 def ajustar_para_dia_util(series):
     return series.apply(lambda x: x + BDay(1) if x.dayofweek >= 5 else x)
-
-
-
-

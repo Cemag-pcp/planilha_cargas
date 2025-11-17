@@ -1,4 +1,4 @@
-# 📄 Documentação — Script de Processamento de Cargas e Lead Time (xonexao_plan.py)
+# 📄 Documentação — Script de Processamento de Cargas e Lead Time (conexao_plan.py)
 
 Este módulo reúne todas as funções responsáveis por:
 
