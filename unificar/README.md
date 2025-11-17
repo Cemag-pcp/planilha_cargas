@@ -120,6 +120,6 @@ Caso contrário, manter o valor existente.
   - Status  
   - Ordem de Produção  
   - OPCIONAL 7  
-- A função retorna um DataFrame e não salva o Excel automaticamente (mas isso pode ser ativado ao descomentar o trecho de salvamento no código).
+- A função retorna um DataFrame unificado contendo todas as planilhas desde a primeira data que tenha cargas em aberto
 
 ---

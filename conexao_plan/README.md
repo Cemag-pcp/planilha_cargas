@@ -44,7 +44,7 @@ O arquivo contém as seguintes funções principais:
 Buscar da planilha Google Sheets todas as carretas previstas no intervalo informado.
 
 ### **Processo de Negócio**
-- Ler a planilha **Importar Dados**
+- Ler a planilha **RQ AV-002-000 (PLANILHA DE CARGAS)** na aba **Importar Dados**
 - Padronizar colunas e converter datas
 - Descartar linhas sem data
 - Agrupar por:
