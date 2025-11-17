@@ -1,105 +1,125 @@
-# Documentação — unificar.py
+# 📄 Documentação — unificar.py
 
-Este módulo tem como objetivo unificar planilhas Excel diárias, aplicar filtros por data, corrigir dados inconsistentes e consolidar informações relacionadas à produção. Ele é utilizado em uma rotina de atualização diária, onde várias planilhas individuais precisam ser mescladas em uma única planilha final.
+Este módulo tem como objetivo unificar planilhas Excel diárias, aplicar filtros por data, corrigir dados inconsistentes e consolidar informações de produção. Ele faz parte de uma rotina de atualização diária onde diversas planilhas individuais são mescladas em uma única planilha consolidada.
 
-## Objetivo da Regra de Negócio
+---
 
-O script implementa a seguinte lógica funcional:
+# 📌 Regras de Negócio — Visão Geral
 
-1. Ler todas as planilhas de um diretório específico e considerar somente as que:
-   - Possuem extensão .xlsx
-   - Não são arquivos temporários (~$)
-   - Contêm uma data no nome do arquivo maior ou igual à data mínima definida
+1. **Selecionar arquivos válidos** para unificação:
+   - Extensão `.xlsx`
+   - Não serem arquivos temporários (`~$`)
+   - Terem data no nome **maior ou igual** à data de corte (`data_atual`)
 
-2. Processar cada planilha individual, realizando:
-   - Conversão de datas da coluna OPCIONAL 2
-   - Preenchimento automático do campo Recurso quando estiver vazio para produtos específicos
-   - Filtro de linhas que possuam OPCIONAL 2 <= data_final
+2. **Tratar cada planilha individual**:
+   - Converter a coluna `OPCIONAL 2` para datetime
+   - Preencher automaticamente a coluna `Recurso` caso esteja vazia
+   - Filtrar linhas onde `OPCIONAL 2 <= data_final`
 
-3. Separar a planilha do dia atual (última da lista) e preservar seus dados sem duplicações.
+3. **Identificar a planilha do dia atual**:
+   - A última planilha encontrada
+   - Será usada como base para a unificação
 
-4. Unificar todas as demais planilhas anteriores ao dia atual.
+4. **Unificar as demais planilhas anteriores**:
+   - Concatenar todas as planilhas exceto a de hoje
 
-5. Regra de negócio sobre finalizações:
-   - Manter somente registros com Status = "Finalizada"
-   - Remover duplicidades baseando-se nas colunas:
-     - Ordem de Produção
-     - Produto
-     - OPCIONAL 7
-     - Status
-   - Atualizar a coluna Data para a data atual
+5. **Tratar registros finalizados**:
+   - Manter somente linhas com `Status = "Finalizada"`
+   - Remover duplicidades considerando:
+     - Ordem de Produção  
+     - Produto  
+     - OPCIONAL 7  
+     - Status  
+   - Atualizar a coluna `Data` para a data do dia
 
-6. Combinar a planilha do dia atual com os dados históricos finalizados.
+6. **Construir a planilha final**:
+   - Juntar a planilha de hoje + finalizadas únicas
+   - Ordenar pela coluna `OPCIONAL 2`
 
-7. Ordenar o resultado final pela coluna OPCIONAL 2.
+---
 
-## Estrutura esperada do projeto
+# 📁 Estrutura esperada do projeto
 
-atualizacao-diaria/
-├── arquivos-individuais/
-│   ├── cargas_2025-01-01.xlsx
-│   ├── cargas_2025-01-02.xlsx
-│   └── ...
-└── unificar.py
+atualizacao-diaria/  
+├── arquivos-individuais/  
+│   ├── cargas_2025-01-01.xlsx  
+│   ├── cargas_2025-01-02.xlsx  
+│   └── ...  
+└── unificar.py  
 
-## Descrição das Funções
+---
 
-### unificar_planilhas(data_atual_arquivo, data_final, data_atual)
-Função principal do módulo. Responsável por carregar, filtrar e consolidar todas as planilhas Excel.
+# ⚙️ Descrição das Funções
 
-Parâmetros:
-- data_atual_arquivo: string usada no nome do arquivo final (caso fosse salvo)
-- data_final: limite máximo para filtrar a coluna OPCIONAL 2
-- data_atual: data mínima permitida para o nome dos arquivos
+## 🔧 unificar_planilhas(data_atual_arquivo, data_final, data_atual)
 
-Fluxo interno resumido:
-1. Converte datas para remover timezone
-2. Percorre a pasta com os arquivos
-3. Seleciona arquivos válidos baseado no nome
-4. Lê as planilhas
-5. Converte OPCIONAL 2 para datetime
-6. Preenche o campo Recurso com regras específicas
-7. Filtra linhas por data
-8. Separa a planilha mais recente
-9. Concatena as demais
-10. Remove duplicidades apenas em itens finalizados
-11. Atualiza a data dos finalizados
-12. Junta tudo e ordena
+Função principal responsável pela unificação e tratamento das planilhas.
 
-Retorno:
-Um DataFrame pandas contendo a planilha unificada.
+### **Parâmetros**
+- `data_atual_arquivo`: string usada no nome do arquivo final (caso fosse salvo)
+- `data_final`: data limite para filtrar linhas pela coluna `OPCIONAL 2`
+- `data_atual`: data mínima permitida para os arquivos considerados
 
-### verifica_data_arquivo(nome_arquivo, data_limite)
-Valida se o arquivo deve ser processado.
+### **Fluxo interno (resumo claro)**
+1. Normalização das datas recebidas  
+2. Leitura dos arquivos da pasta  
+3. Seleção apenas dos arquivos válidos  
+4. Conversão da coluna `OPCIONAL 2`  
+5. Preenchimento da coluna `Recurso`  
+6. Filtragem por data limite  
+7. Separação da planilha do dia atual  
+8. Concatenação das demais planilhas  
+9. Remoção de duplicidades em finalizadas  
+10. Atualização da data  
+11. Junção com a planilha de hoje  
+12. Ordenação final  
 
-Regras:
-- Extrai a data do arquivo no formato cargas_YYYY-MM-DD.xlsx
-- Converte para datetime
-- Valida se: data_do_arquivo >= data_limite
+### **Retorno**
+Um `DataFrame` pandas contendo todos os dados consolidados.
 
-### preencher_recurso(row)
-Preenche automaticamente o campo Recurso para produtos cujo valor esteja vazio.
+---
 
-Regra aplicada:
-Se Recurso estiver vazio e o produto for um dos listados:
+## 🔍 verifica_data_arquivo(nome_arquivo, data_limite)
 
-030389 → CONJ INTERMED  
-30389  → CONJ INTERMED  
-450133 → CONJ INTERMED  
+Função que valida se um arquivo deve ser processado.
 
-Então: Recurso = "CONJ INTERMED"
+### **Regra aplicada**
+- O nome do arquivo deve seguir o padrão:  
+  `cargas_YYYY-MM-DD.xlsx`
+- A data extraída deve ser **>= data_limite**
 
-Caso contrário, mantém o valor original.
+---
 
-## Observações
+## 🧩 preencher_recurso(row)
 
-- O código assume que existe uma planilha referente ao dia atual na pasta.
-- Arquivos temporários do Excel (~$) são ignorados.
+Função auxiliar que preenche automaticamente o campo `Recurso` quando ele estiver vazio.
+
+### **Tabela de Regras**
+Se o produto estiver nesta lista:
+
+| Produto | Recurso        |
+|---------|----------------|
+| 030389  | CONJ INTERMED |
+| 30389   | CONJ INTERMED |
+| 450133  | CONJ INTERMED |
+
+E o campo `Recurso` estiver vazio → preencher com **CONJ INTERMED**.
+
+Caso contrário, manter o valor existente.
+
+---
+
+# 📎 Observações importantes
+
+- O código assume que exista **uma planilha referente ao dia atual** na pasta.
+- Arquivos temporários do Excel (`~$`) são ignorados automaticamente.
 - Todas as planilhas devem conter as colunas:
-  - OPCIONAL 2
-  - Produto
-  - Recurso
-  - Status
-  - Ordem de Produção
-  - OPCIONAL 7
-- A função retorna um DataFrame e não salva em Excel, mas isso pode ser ativado se você descomentar o trecho de salvamento.
+  - OPCIONAL 2  
+  - Produto  
+  - Recurso  
+  - Status  
+  - Ordem de Produção  
+  - OPCIONAL 7  
+- A função retorna um DataFrame e não salva o Excel automaticamente (mas isso pode ser ativado ao descomentar o trecho de salvamento no código).
+
+---
