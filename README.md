@@ -4,6 +4,10 @@ Este projeto é uma aplicação **Flask** para processamento, unificação e exp
 
 ---
 
+## Documentações
+- [unificar.py](unificar/README.md)
+- [conexao_plan.py](conexao_plan/README.md)
+
 ## 🚀 Funcionalidades Principais
 
 - Processamento de cargas a partir de uma API externa.
@@ -20,7 +24,7 @@ Este projeto é uma aplicação **Flask** para processamento, unificação e exp
 
 - `app.py` → Arquivo principal da aplicação.
 - `conexao_plan.py` → Contém funções para busca e filtragem de cargas (`busca_cargas`, `conectar_com_base`, `definir_leadtime`).
-- `unificar.py` → Função `unificar_planilhas` para consolidar planilhas em uma única. - [unificar.py](unificar/README.md)
+- `unificar.py` → Função `unificar_planilhas` para consolidar planilhas em uma única.
 - `tmp/` → Pasta para arquivos temporários gerados durante o processamento.
 - `atualizacao-diaria/` → Pasta para armazenar planilhas geradas automaticamente.
   - `arquivos-individuais/` → Planilhas individuais de cada execução diária.
